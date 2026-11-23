@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0f28">
+<title>Bzgz Proxy</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#0a0f28;--cd:rgba(13,20,52,.86);--bd:#232d66;--t:#eef1ff;--m:#8f9bc9;--p1:#f43f8e;--p2:#7c5cf0;--ok:#34d399;--bad:#fb7185;--in:#060a1e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;color:var(--t);font-family:Vazirmatn,"IRANSans",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14.5px;padding:12px 14px 112px;
+ background:radial-gradient(900px 420px at 50% -80px,rgba(244,63,142,.26),transparent 65%),radial-gradient(700px 420px at 100% 40%,rgba(124,92,240,.18),transparent 60%),linear-gradient(180deg,#140c27 0,#0b1131 38%,#0a0f28 100%);background-attachment:fixed}
+header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px}.logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:22px;background:linear-gradient(135deg,var(--p1),var(--p2));box-shadow:0 8px 24px rgba(244,63,142,.35)}
+select{appearance:none;-webkit-appearance:none;background:rgba(13,20,52,.9) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238f9bc9' stroke-width='2'%3E%3Cpath d='M2 5l5 5 5-5'/%3E%3C/svg%3E") no-repeat 12px center;color:var(--t);border:1px solid var(--bd);border-radius:16px;padding:11px 36px 11px 18px;font:inherit;font-size:14px;outline:0}
+html[dir=rtl] select{background-position:12px center}html[dir=ltr] select{background-position:calc(100% - 12px) center;padding:11px 36px 11px 18px}
+.hero{text-align:center;padding:6px 0 4px}
+.gt{font-size:clamp(38px,12vw,54px);font-weight:900;margin:8px 0 14px;letter-spacing:-1px;line-height:1.1;background:linear-gradient(90deg,var(--p1),#b04fd0 55%,var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid var(--bd);border-radius:999px;background:rgba(13,20,52,.7);font-size:13.5px}.chip:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+h2.hd{font-size:23px;line-height:1.55;margin:0 0 8px;font-weight:800}p.sb{color:var(--m);font-size:15px;line-height:1.95;margin:0 0 20px}
+.card{background:var(--cd);border:1px solid var(--bd);border-radius:30px;padding:22px 20px;margin-bottom:14px;box-shadow:0 14px 50px rgba(0,0,0,.35);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.card h3{font-size:18px;margin:0 0 14px;font-weight:700;display:flex;align-items:center;gap:10px}
+label{display:block;color:var(--m);font-size:14px;margin:14px 2px 8px}
+input,textarea{width:100%;padding:16px 18px;border-radius:20px;border:1px solid var(--bd);background:var(--in);color:var(--t);font:inherit;font-size:15px;outline:0;transition:.2s}input:focus,textarea:focus{border-color:var(--p2);box-shadow:0 0 0 3px rgba(124,92,240,.2)}input.l{direction:ltr;text-align:left}textarea{min-height:100px;resize:vertical}
+.btn{border:1px solid var(--bd);background:rgba(255,255,255,.05);color:var(--t);border-radius:16px;padding:10px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}.btn:active{transform:scale(.96)}.btn:disabled{opacity:.55}.btn.d{color:var(--bad)}.btn.s{padding:8px 12px;font-size:12.5px}
+.btn.p{display:block;width:100%;margin-top:18px;padding:17px;font-size:16px;font-weight:700;border:0;border-radius:20px;color:#fff;background:linear-gradient(135deg,var(--p1),var(--p2));box-shadow:0 12px 34px rgba(244,63,142,.32)}
+.pill{display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;border:1px solid var(--bd);background:rgba(255,255,255,.04);font-size:13px;margin:3px;cursor:pointer}.pill.on{border:0;color:#fff;background:linear-gradient(135deg,var(--p1),var(--p2))}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--bd)}.row:last-child{border:0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:8px;background:var(--ok);box-shadow:0 0 10px var(--ok)}.dot.bad{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+.url{direction:ltr;text-align:left;font-size:12px;color:#9db4ff;word-break:break-all;margin:8px 0;padding:12px 14px;background:var(--in);border-radius:16px;border:1px solid var(--bd)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi{background:var(--in);border:1px solid var(--bd);border-radius:20px;padding:14px;text-align:center}.kpi b{display:block;font-size:21px;font-weight:800}.kpi small{color:var(--m);font-size:11.5px}
+.spark{display:flex;align-items:flex-end;gap:5px;height:42px;margin-top:12px}.spark i{flex:1;border-radius:5px;background:linear-gradient(var(--p1),var(--p2));min-height:4px;opacity:.9}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.add{display:flex;gap:8px}.add input{margin:0}.add .btn{flex:none}
+ol.st{list-style:none;margin:0;padding:0;counter-reset:s}ol.st li{counter-increment:s;display:flex;gap:12px;padding:10px 0;color:var(--m);line-height:1.8;font-size:14px}ol.st li:before{content:counter(s);flex:none;width:28px;height:28px;border-radius:10px;display:grid;place-items:center;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--p1),var(--p2))}
+details{border-top:1px solid var(--bd);padding:12px 0}summary{cursor:pointer;font-size:14.5px;font-weight:600}details p{color:var(--m);line-height:1.9;margin:8px 0 0;font-size:13.5px}
+.note{display:flex;gap:12px;align-items:flex-start;color:var(--m);font-size:13.5px;line-height:1.9}.note b{color:var(--t)}.ic{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:18px;flex:none;background:linear-gradient(135deg,rgba(244,63,142,.25),rgba(124,92,240,.25))}
+nav{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:12px;right:12px;display:flex;gap:4px;padding:7px;border-radius:30px;background:rgba(10,15,40,.94);border:1px solid var(--bd);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 14px 40px rgba(0,0,0,.5);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--m);font:inherit;font-size:12.5px;padding:13px 2px;border-radius:24px;cursor:pointer;transition:.2s}nav button.on{color:#fff;font-weight:700;background:linear-gradient(135deg,var(--p1),var(--p2));box-shadow:0 8px 22px rgba(244,63,142,.3)}
+#view{animation:f .3s}@keyframes f{from{opacity:0;transform:translateY(10px)}}
+.sk{height:120px;border-radius:30px;margin-bottom:14px;background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:sh 1.2s infinite}@keyframes sh{to{background-position:-200% 0}}
+#toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-20px);background:#151c46;border:1px solid var(--bd);padding:12px 20px;border-radius:18px;font-size:13.5px;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:90%}#toast.s{opacity:1;transform:translate(-50%,0)}
+#ov{position:fixed;inset:0;background:rgba(3,5,16,.65);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;z-index:50}#ov.on{display:flex}#mb{width:100%;max-width:540px;margin:0 8px 8px;background:#0c1230;border:1px solid var(--bd);border-radius:30px;padding:22px 20px;max-height:88vh;overflow:auto;animation:up .25s}@keyframes up{from{transform:translateY(40px);opacity:0}}
+.msg{padding:10px 14px;border-radius:20px;margin:7px 0;font-size:13.5px;max-width:88%;white-space:pre-wrap;word-break:break-word}.msg.u{background:rgba(255,255,255,.08);margin-inline-start:auto}.msg.a{background:linear-gradient(135deg,rgba(244,63,142,.3),rgba(124,92,240,.3))}
+.tg{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}a{color:#9db4ff}code{direction:ltr;display:inline-block;color:#9db4ff;font-size:12.5px}
+footer{text-align:center;color:var(--m);font-size:12.5px;padding:10px 0 4px}footer a{color:var(--t);font-weight:600;text-decoration:none}
+
+.badge{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--bd);margin-inline-start:auto;white-space:nowrap}
+.badge.ok{color:var(--ok);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)}.badge.bad{color:var(--bad);border-color:rgba(251,113,133,.4);background:rgba(251,113,133,.08)}.badge.off{color:#fbbf24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+.pc.paused .url,.pc.paused .spark{opacity:.45}.seen{color:var(--m);font-size:12px;margin:-6px 2px 8px}.pn{color:#fbbf24;font-size:13px;line-height:1.8;margin:12px 2px 0}
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.ab{display:flex;flex-direction:column;gap:4px;text-align:start;padding:12px 13px;border-radius:18px;border:1px solid var(--bd);background:rgba(255,255,255,.04);color:var(--t);font:inherit;cursor:pointer;transition:.15s}.ab:active{transform:scale(.97)}
+.ab b{font-size:13.5px;font-weight:700}.ab small{color:var(--m);font-size:11.5px;line-height:1.6}.ab.d b{color:var(--bad)}.ab.w b{color:#fbbf24}
+.stores{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}.stores .btn{padding:14px 10px;font-size:14px;font-weight:600;text-align:center;border-radius:18px}.stores .full{grid-column:1/-1}
+.sw{position:relative;width:46px;height:26px;flex:none}.sw input{opacity:0;position:absolute;inset:0;z-index:2;margin:0;padding:0;width:100%;height:100%;cursor:pointer}.sw i{position:absolute;inset:0;border-radius:99px;background:var(--in);border:1px solid var(--bd);transition:.2s}.sw i:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:18px;height:18px;border-radius:50%;background:var(--m);transition:.2s}.sw input:checked+i{background:linear-gradient(135deg,var(--p1),var(--p2));border-color:transparent}.sw input:checked+i:after{inset-inline-start:23px;background:#fff}
+.hint{color:var(--m);font-size:12.5px;line-height:1.8;margin:6px 2px 0}
+</style></head><body>
+<div id="toast"></div><div id="ov"><div id="mb"></div></div>
+<header><div class="brand"><span class="logo">B</span>Bzgz</div><select id="lg" onchange="setLang(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ru">Русский</option></select></header>
+<div id="view"></div>
+<footer><span data-i="by"></span> <a href="https://t.me/Lappeh" onclick="event.preventDefault();tg?.openTelegramLink?tg.openTelegramLink('https://t.me/Lappeh'):window.open('https://t.me/Lappeh')">@Lappeh</a></footer>
+<nav id="nav"><button data-t="home" data-i="nHome"></button><button data-t="use" data-i="nUse"></button><button data-t="guide" data-i="nGuide"></button><button data-t="support" data-i="nSup"></button><button data-t="me" data-i="nMe"></button></nav>
+
+<script>
+const I={
+en:{by:'Made by',nHome:'Home',nUse:'Usage',nGuide:'Guide',nSup:'Support',nMe:'Me',
+ c1:'Free',c2:'On your account',c3:'Serverless',head:'Your personal Telegram proxy on your own Cloudflare',sub:'Paste a token — the proxy is created automatically on your account. The traffic is all yours.',
+ cT:'Create proxies automatically',tokL:'Cloudflare token',tokPh:'API Token',accL:'Account ID (optional)',accPh:'Detected automatically if left empty',memL:'Who are these for?',memPh:'Name',cm:['Me','Spouse','Mom','Dad','Kid','Other'],
+ build:'Create proxies ✨',building:'Creating… ⏳',done:'Your proxies are ready 🎉',gone:'Your token was discarded after use.',getTok:'Create a token (one tap)',perm:'Permissions are pre-selected — just press Continue → Create Token.',
+ secT:'Your token stays private',secD:'It is used for a single request and discarded — it is never stored. You can revoke it in Cloudflare right after.',
+ useT:'Usage',noP:'No proxies yet — create your first one on Home.',today:'Today',week:'7 days',of:'requests',tTraf:'Traffic today',tReq:'Requests today',
+ addTg:'➕ Add to Telegram',copy:'Copy link',share:'Share',copied:'Copied ✅',tokNote:'A one-time token is required. It is used for this request only and is not stored.',updT:'Update proxy',delT:'Delete completely',tok:'API token',acc:'Account ID',ok:'Confirm',
+ rmT:'Remove proxy',rmB:'<b>Only from list:</b> the worker stays in your Cloudflare account.<br><b>Delete completely:</b> the worker is deleted too (one-time token needed).',rmL:'Only from list',rmF:'Delete completely',renT:'Rename',save:'Save',doneT:'Done ✅',
+ gT:'How it works',g1:'Tap “Create a token”, press Continue → Create Token and copy it.',g2:'Paste it on Home and add a name per person — each gets a separate link.',g3:'Tap “Add to Telegram” on a proxy.',g4:'Confirm in Telegram and tap Connect.',
+ fq:'FAQ',q1:'Which Telegram apps work?',a1:'Apps that support the WEB proxy type (recent Telegram Desktop and newer mobile versions).',q2:'How many proxies can I make?',a2:'As many as you need. Give each person their own so a leaked link can be removed alone.',q3:'Is my token safe?',a3:'It is used once and never stored. Delete it in Cloudflare after creating your proxies if you like.',q4:'A proxy stopped working?',a4:'You get a bot message when one goes down. Use “Update” on the Usage tab or create a new one.',
+ supT:'Support',supPh:'Describe your issue…',send:'Send',myT:'My tickets',sentT:'Sent ✅',msgPh:'Message…',closeT:'Close ticket',reopen:'Reopen',
+ pT:'Profile',joined:'Joined',notif:'Notifications',adm:'Admin panel',
+ aS:'Stats',aU:'Users',aT:'Tickets',aG:'Settings',kU:'Users',kN:'New today',kA:'Active 24h',kP:'Proxies',kD:'down',top:'Top usage (7d)',d14:'Traffic, last 14 days',
+ sr:'Search by id or name',go:'Search',addU:'Add user',idPh:'Numeric Telegram id',ban:'Ban',unban:'Unban',noT:'No tickets 🎉',open:'Open',closed:'Closed',
+ admins:'Admins (answer support)',aIdPh:'Numeric id of new admin',addA:'Add admin',fj:'Forced join (bot)',fjD:'The bot must be an admin of the channel. Private channel: use its numeric id (-100…) and an invite link.',chPh:'@channel_username / -100…',addC:'Add channel',bc:'Broadcast',bcPh:'Message to all users…',all:'Send to all',sure:'Send to everyone?',queued:'Queued ✅',
+ stOn:'Online',stDn:'Down',stOff:'Paused',seenL:'Last report',never:'never',
+ aCopy:'Copy link',hCopy:'Send it to family or friends',aShare:'Share',hShare:'Via a Telegram chat',aRen:'Rename',hRen:'Change the label',aUpd:'Update',hUpd:'Install the newest proxy code, same link',aRot:'New link',hRot:'Old link stops working — use it if the link leaked',aPause:'Pause',hPause:'Switch it off for now, resume any time',aRes:'Resume',hRes:'Switch it back on',aDel:'Delete',hDel:'From the list or from Cloudflare',
+ pauseT:'Pause proxy',pauseW:'The proxy stops answering right away. Nothing is deleted — resume it whenever you like.',resumeT:'Resume proxy',resumeW:'The proxy goes back online with the same link.',rotT:'Create a new link',rotW:'A new secret is generated. The old link stops working everywhere, so send the new one to the people who use it.',pausedNote:'⏸ Paused — this link does not work until you resume it.',
+ dlT:'Get the latest Telegram',dlD:'Proxy links of the WEB type need an up-to-date Telegram app.',dlG:'Google Play',dlA:'App Store',dlL:'Latest version · all platforms',
+ jOk:'✅ You have joined — thank you!',lockL:'Forced join lock',lockD:'On: people must join the channels to use the bot. Off: open to everyone.',clk:'Invite link (private channel only)',e_limit:'Limit reached: 30 proxies per user.',e_nolink:'Private channel: add its invite link (https://t.me/+…).',
+ e_auth:'Authentication failed — open this from the bot.',e_banned:'Access blocked.',e_names:'Enter at least one name.',e_wait:'Please wait a moment and retry.',e_creds:'Invalid token.',e_noacct:'Account ID could not be detected — please enter it.',e_notfound:'Not found.',e_empty:'Empty message.',e_badid:'Numeric id required.',e_badch:'Use @username, or a -100… id for a private channel.',e_nochannel:'Channel not found — the bot must be its admin.',e_route:'Invalid request.',e_cf:'Cloudflare error.',e_forbidden:'Not allowed.',e_join:'Join the required channel(s) first.',jT:'Join to continue',jD:'To use Bzgz Proxy, please join the channel(s) below, then tap “I joined”.',jGo:'📢 Join',jChk:'✅ I joined (check again)',jNo:'You have not joined yet.'},
+ru:{by:'Сделал',nHome:'Главная',nUse:'Расход',nGuide:'Гайд',nSup:'Помощь',nMe:'Я',
+ c1:'Бесплатно',c2:'В вашем аккаунте',c3:'Без сервера',head:'Ваш личный прокси для Telegram в вашем Cloudflare',sub:'Вставьте токен — прокси создаётся автоматически в вашем аккаунте. Весь трафик только ваш.',
+ cT:'Автоматическое создание прокси',tokL:'Токен Cloudflare',tokPh:'API Token',accL:'Account ID (необязательно)',accPh:'Определится автоматически, если пусто',memL:'Для кого прокси?',memPh:'Имя',cm:['Я','Супруг(а)','Мама','Папа','Ребёнок','Другое'],
+ build:'Создать прокси ✨',building:'Создаём… ⏳',done:'Ваши прокси готовы 🎉',gone:'Токен удалён после использования.',getTok:'Создать токен (в один клик)',perm:'Права уже выбраны — нажмите Continue → Create Token.',
+ secT:'Ваш токен остаётся приватным',secD:'Он используется для одного запроса и сразу удаляется — нигде не хранится. После создания его можно отозвать в Cloudflare.',
+ useT:'Расход',noP:'Прокси пока нет — создайте первый на главной.',today:'Сегодня',week:'7 дней',of:'запросов',tTraf:'Трафик сегодня',tReq:'Запросов сегодня',
+ addTg:'➕ Добавить в Telegram',copy:'Копировать',share:'Поделиться',copied:'Скопировано ✅',tokNote:'Нужен одноразовый токен. Он используется только для этого запроса и не сохраняется.',updT:'Обновить прокси',delT:'Удалить полностью',tok:'API-токен',acc:'Account ID',ok:'Подтвердить',
+ rmT:'Убрать прокси',rmB:'<b>Только из списка:</b> воркер останется в вашем Cloudflare.<br><b>Удалить полностью:</b> воркер тоже удаляется (нужен одноразовый токен).',rmL:'Только из списка',rmF:'Удалить полностью',renT:'Переименовать',save:'Сохранить',doneT:'Готово ✅',
+ gT:'Как это работает',g1:'Нажмите «Создать токен», затем Continue → Create Token и скопируйте токен.',g2:'Вставьте его на главной и добавьте имя для каждого — у каждого своя ссылка.',g3:'Нажмите «Добавить в Telegram» у прокси.',g4:'Подтвердите в Telegram и нажмите Connect.',
+ fq:'Вопросы',q1:'Какие приложения Telegram подходят?',a1:'Приложения с поддержкой прокси типа WEB (свежий Telegram Desktop и новые мобильные версии).',q2:'Сколько прокси можно создать?',a2:'Сколько нужно. Дайте каждому свой — утёкшую ссылку можно убрать отдельно.',q3:'Мой токен в безопасности?',a3:'Он используется один раз и не хранится. После создания можно удалить его в Cloudflare.',q4:'Прокси перестал работать?',a4:'Бот пришлёт сообщение, если один упадёт. Нажмите «Обновить» на вкладке «Расход» или создайте новый.',
+ supT:'Поддержка',supPh:'Опишите проблему…',send:'Отправить',myT:'Мои обращения',sentT:'Отправлено ✅',msgPh:'Сообщение…',closeT:'Закрыть',reopen:'Открыть снова',
+ pT:'Профиль',joined:'С нами с',notif:'Уведомления',adm:'Панель админа',
+ aS:'Статистика',aU:'Пользователи',aT:'Обращения',aG:'Настройки',kU:'Пользователи',kN:'Новых сегодня',kA:'Активны 24ч',kP:'Прокси',kD:'недоступно',top:'Топ по трафику (7д)',d14:'Трафик за 14 дней',
+ sr:'Поиск по id или имени',go:'Найти',addU:'Добавить пользователя',idPh:'Числовой Telegram id',ban:'Бан',unban:'Разбан',noT:'Обращений нет 🎉',open:'Открытые',closed:'Закрытые',
+ admins:'Админы (ответы в поддержке)',aIdPh:'Числовой id нового админа',addA:'Добавить админа',fj:'Обязательная подписка (бот)',fjD:'Бот должен быть админом канала. Приватный канал: числовой id (-100…) и ссылка-приглашение.',chPh:'@channel_username / -100…',addC:'Добавить канал',bc:'Рассылка',bcPh:'Сообщение всем…',all:'Отправить всем',sure:'Отправить всем?',queued:'В очереди ✅',
+ stOn:'Работает',stDn:'Недоступен',stOff:'Приостановлен',seenL:'Последний отчёт',never:'никогда',
+ aCopy:'Копировать',hCopy:'Отправьте семье или друзьям',aShare:'Поделиться',hShare:'Через чат Telegram',aRen:'Переименовать',hRen:'Изменить название',aUpd:'Обновить',hUpd:'Свежий код прокси, ссылка прежняя',aRot:'Новая ссылка',hRot:'Старая перестанет работать — если ссылка утекла',aPause:'Пауза',hPause:'Выключить на время, включить можно в любой момент',aRes:'Включить',hRes:'Вернуть в работу',aDel:'Удалить',hDel:'Из списка или из Cloudflare',
+ pauseT:'Приостановить прокси',pauseW:'Прокси сразу перестанет отвечать. Ничего не удаляется — включить можно в любой момент.',resumeT:'Включить прокси',resumeW:'Прокси снова заработает с той же ссылкой.',rotT:'Новая ссылка',rotW:'Будет создан новый секрет. Старая ссылка перестанет работать везде — отправьте новую тем, кто пользуется прокси.',pausedNote:'⏸ Приостановлен — ссылка не работает, пока вы не включите прокси.',
+ dlT:'Скачать свежий Telegram',dlD:'Для прокси типа WEB нужна актуальная версия Telegram.',dlG:'Google Play',dlA:'App Store',dlL:'Последняя версия · все платформы',
+ jOk:'✅ Вы подписались — спасибо!',lockL:'Обязательная подписка',lockD:'Вкл: нужно подписаться на каналы, чтобы пользоваться ботом. Выкл: бот открыт для всех.',clk:'Ссылка-приглашение (только для приватного канала)',e_limit:'Лимит: 30 прокси на пользователя.',e_nolink:'Приватный канал: добавьте ссылку-приглашение (https://t.me/+…).',
+ e_auth:'Ошибка авторизации — откройте из бота.',e_banned:'Доступ заблокирован.',e_names:'Введите хотя бы одно имя.',e_wait:'Подождите немного и повторите.',e_creds:'Неверный токен.',e_noacct:'Не удалось определить Account ID — введите его.',e_notfound:'Не найдено.',e_empty:'Пустое сообщение.',e_badid:'Нужен числовой id.',e_badch:'Формат: @username или id вида -100… для приватного канала.',e_nochannel:'Канал не найден — бот должен быть его админом.',e_route:'Неверный запрос.',e_cf:'Ошибка Cloudflare.',e_forbidden:'Нет доступа.',e_join:'Сначала подпишитесь на обязательные каналы.',jT:'Подпишитесь, чтобы продолжить',jD:'Чтобы пользоваться Bzgz Proxy, подпишитесь на канал(ы) ниже и нажмите «Я подписался».',jGo:'📢 Подписаться',jChk:'✅ Я подписался (проверить)',jNo:'Вы ещё не подписались.'},
+fa:{by:'ساخته‌شده توسط',nHome:'خانه',nUse:'مصرف',nGuide:'راهنما',nSup:'پشتیبانی',nMe:'من',
+ c1:'رایگان',c2:'روی اکانت خودت',c3:'بدون سرور',head:'پروکسی شخصی تلگرام روی کلودفلر خودت',sub:'یک توکن بده؛ پروکسی خودکار روی اکانت خودت ساخته می‌شود. ترافیک هم مال خودت است.',
+ cT:'ساخت خودکار پروکسی',tokL:'توکن کلودفلر',tokPh:'API Token',accL:'Account ID (اختیاری)',accPh:'اگه خالی باشه خودکار پیدا میشه',memL:'پروکسی برای چه کسانی؟',memPh:'نام',cm:['من','همسر','مامان','بابا','فرزند','دیگر'],
+ build:'ساخت پروکسی ✨',building:'در حال ساخت… ⏳',done:'پروکسی‌هات آماده شد 🎉',gone:'توکنت بعد از استفاده دور ریخته شد.',getTok:'ساخت توکن (با یه کلیک)',perm:'دسترسی‌ها از قبل انتخاب شده — فقط Continue → Create Token رو بزن.',
+ secT:'توکنت خصوصی می‌مونه',secD:'فقط برای یک درخواست استفاده میشه و بلافاصله دور ریخته میشه — هیچ‌جا ذخیره نمیشه. بعد از ساخت می‌تونی توی کلودفلر باطلش کنی.',
+ useT:'مصرف',noP:'هنوز پروکسی نداری — اولین رو از خانه بساز.',today:'امروز',week:'۷ روز',of:'درخواست',tTraf:'حجم امروز',tReq:'درخواست امروز',
+ addTg:'➕ افزودن به تلگرام',copy:'کپی لینک',share:'ارسال',copied:'کپی شد ✅',tokNote:'یه توکن موقت لازمه؛ فقط برای همین درخواست استفاده میشه و ذخیره نمیشه.',updT:'آپدیت پروکسی',delT:'حذف کامل',tok:'توکن API',acc:'Account ID',ok:'تأیید',
+ rmT:'حذف پروکسی',rmB:'<b>فقط از لیست:</b> ورکر توی اکانت کلودفلرت می‌مونه.<br><b>حذف کامل:</b> ورکر هم پاک میشه (توکن موقت لازمه).',rmL:'فقط از لیست',rmF:'حذف کامل',renT:'تغییر نام',save:'ذخیره',doneT:'انجام شد ✅',
+ gT:'چطور کار می‌کنه؟',g1:'روی «ساخت توکن» بزن، Continue → Create Token رو بزن و توکن رو کپی کن.',g2:'توی خانه بذارش و برای هر نفر یه اسم اضافه کن — هرکس لینک جدا داره.',g3:'روی پروکسی «افزودن به تلگرام» رو بزن.',g4:'توی تلگرام تأیید کن و Connect بزن.',
+ fq:'سؤالات رایج',q1:'کدوم نسخه‌های تلگرام کار می‌کنن؟',a1:'برنامه‌هایی که پروکسی نوع WEB رو پشتیبانی می‌کنن (تلگرام دسکتاپ جدید و نسخه‌های جدید موبایل).',q2:'چند تا پروکسی می‌تونم بسازم؟',a2:'هر تعداد که بخوای. برای هر نفر جدا بساز تا اگه لینکی لو رفت فقط همون حذف بشه.',q3:'توکنم امنه؟',a3:'فقط یک بار استفاده میشه و ذخیره نمیشه. بعد از ساخت می‌تونی توی کلودفلر پاکش کنی.',q4:'پروکسی از کار افتاد؟',a4:'اگه یکی قطع بشه ربات بهت پیام میده. از تب مصرف «آپدیت» رو بزن یا یکی جدید بساز.',
+ supT:'پشتیبانی',supPh:'مشکلت رو بنویس…',send:'ارسال',myT:'تیکت‌های من',sentT:'ارسال شد ✅',msgPh:'پیام…',closeT:'بستن تیکت',reopen:'بازکردن',
+ pT:'پروفایل',joined:'عضویت',notif:'اعلان‌ها',adm:'پنل مدیریت',
+ aS:'آمار',aU:'کاربران',aT:'تیکت‌ها',aG:'تنظیمات',kU:'کاربران',kN:'جدید امروز',kA:'فعال ۲۴ ساعت',kP:'پروکسی',kD:'قطع',top:'بیشترین مصرف (۷ روز)',d14:'حجم ۱۴ روز اخیر',
+ sr:'جستجو با آیدی یا نام',go:'جستجو',addU:'افزودن کاربر',idPh:'آیدی عددی تلگرام',ban:'بن',unban:'آزاد',noT:'تیکتی نیست 🎉',open:'باز',closed:'بسته',
+ admins:'ادمین‌ها (پاسخ به پشتیبانی)',aIdPh:'آیدی عددی ادمین جدید',addA:'افزودن ادمین',fj:'جوین اجباری (ربات)',fjD:'ربات باید ادمین کانال باشه. کانال خصوصی: آیدی عددی (-100…) و لینک دعوت.',chPh:'@channel_username / -100…',addC:'افزودن کانال',bc:'پیام همگانی',bcPh:'پیام برای همه…',all:'ارسال به همه',sure:'برای همه ارسال بشه؟',queued:'در صف ارسال ✅',
+ stOn:'فعال',stDn:'قطع',stOff:'خاموش',seenL:'آخرین گزارش',never:'هرگز',
+ aCopy:'کپی لینک',hCopy:'برای خانواده و دوستان بفرست',aShare:'ارسال',hShare:'از طریق چت تلگرام',aRen:'تغییر نام',hRen:'عوض کردن برچسب',aUpd:'آپدیت',hUpd:'جدیدترین کد پروکسی، با همون لینک',aRot:'لینک جدید',hRot:'لینک قبلی کار نمی‌کنه — اگه لو رفته',aPause:'خاموش کردن',hPause:'موقتاً خاموشش کن، هر وقت خواستی روشن کن',aRes:'روشن کردن',hRes:'دوباره فعالش کن',aDel:'حذف',hDel:'از لیست یا از کلودفلر',
+ pauseT:'خاموش کردن پروکسی',pauseW:'پروکسی همین الان جواب دادن رو متوقف می‌کنه. چیزی پاک نمیشه — هر وقت خواستی روشنش کن.',resumeT:'روشن کردن پروکسی',resumeW:'پروکسی با همون لینک دوباره آنلاین میشه.',rotT:'ساخت لینک جدید',rotW:'یه سکرت جدید ساخته میشه. لینک قبلی همه‌جا از کار می‌افته؛ لینک جدید رو به کسانی که ازش استفاده می‌کنن بده.',pausedNote:'⏸ خاموشه — تا روشنش نکنی این لینک کار نمی‌کنه.',
+ dlT:'دانلود آخرین نسخه تلگرام',dlD:'پروکسی نوع WEB به نسخه‌ی به‌روز تلگرام نیاز داره.',dlG:'گوگل‌پلی',dlA:'اپ‌استور',dlL:'آخرین نسخه · همه پلتفرم‌ها',
+ jOk:'✅ شما جوین شدید — ممنون!',lockL:'قفل جوین اجباری',lockD:'روشن: برای استفاده از ربات باید توی کانال‌ها عضو شد. خاموش: ربات برای همه بازه.',clk:'لینک دعوت (فقط برای کانال خصوصی)',e_limit:'سقف پر شد: ۳۰ پروکسی برای هر کاربر.',e_nolink:'کانال خصوصی: لینک دعوتش رو بذار (https://t.me/+…).',
+ e_auth:'احراز هویت ناموفق — از داخل ربات باز کن.',e_banned:'دسترسی مسدوده.',e_names:'حداقل یک نام وارد کن.',e_wait:'کمی صبر کن و دوباره امتحان کن.',e_creds:'توکن معتبر نیست.',e_noacct:'Account ID خودکار پیدا نشد — واردش کن.',e_notfound:'پیدا نشد.',e_empty:'پیام خالیه.',e_badid:'آیدی عددی لازمه.',e_badch:'فرمت: @username یا آیدی -100… برای کانال خصوصی.',e_nochannel:'کانال پیدا نشد — ربات باید ادمین باشه.',e_route:'درخواست نامعتبر.',e_cf:'خطا از کلودفلر.',e_forbidden:'اجازه نداری.',e_join:'اول در کانال(های) اجباری عضو شو.',jT:'برای ادامه عضو شو',jD:'برای استفاده از Bzgz Proxy ابتدا در کانال(های) زیر عضو شو و بعد «عضو شدم» رو بزن.',jGo:'📢 عضویت',jChk:'✅ عضو شدم (بررسی مجدد)',jNo:'هنوز عضو نشدی.'}};
+
+const TOKEN_URL='https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%5D&accountId=*&zoneId=all&name=Bzgz';
+const STORE={g:'https://play.google.com/store/apps/details?id=org.telegram.messenger',a:'https://apps.apple.com/app/telegram-messenger/id686449807',l:'https://telegram.org/dl'};
+const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#0a0f28');tg.setBackgroundColor('#0a0f28')}catch(e){}}
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LG=(()=>{const c=String(tg?.initDataUnsafe?.user?.language_code||navigator.language||'en').slice(0,2);return I[c]?c:'en'})();
+const t=k=>I[LG][k]??I.en[k]??k;
+const loc={en:'en-GB',ru:'ru-RU',fa:'fa-IR'},n=x=>Number(x).toLocaleString(loc[LG]),fD=d=>new Date(d).toLocaleDateString(loc[LG]);
+const fB=b=>b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(1)+' MB':(b/1e3).toFixed(0)+' KB';
+let S={user:{role:'user'}},P=[],cur='home',M=[],AC='stats';
+function applyLang(){document.documentElement.lang=LG;document.documentElement.dir=LG==='fa'?'rtl':'ltr';$('#lg').value=LG;document.querySelectorAll('[data-i]').forEach(e=>e.textContent=t(e.dataset.i))}
+function toast(x){const e=$('#toast');e.textContent=x;e.className='s';setTimeout(()=>e.className='',2600);tg?.HapticFeedback?.impactOccurred('light')}
+const errMsg=e=>{const m=e.message||'';return I[LG]['e_'+m]||I.en['e_'+m]?t('e_'+m):m};
+async function api(p,b={}){const r=await fetch('/api/'+p,{method:'POST',headers:{'content-type':'application/json','x-init':(tg&&tg.initData)||''},body:JSON.stringify(b)});const j=await r.json();if(!j.ok){const e=new Error(j.error||'cf');e.channels=j.channels;e.made=j.made;throw e}return j}
+const go=async f=>{try{await f()}catch(e){if(e.message==='join'){rJoin(e.channels||[]);return}toast(errMsg(e))}};
+function rJoin(chs){closeM();view(`<div class="card" style="text-align:center"><h3 style="justify-content:center">🔒 ${t('jT')}</h3><p style="color:var(--m);line-height:1.9">${t('jD')}</p>`+chs.map(c=>`<button class="btn p" style="margin-top:10px" onclick="openTg('${esc(c.url)}')">${t('jGo')} ${esc(c.title||c.id)}</button>`).filter((_,i)=>chs[i].url).join('')+`<button class="btn p" style="background:rgba(255,255,255,.08);box-shadow:none" onclick="chkJoin()">${t('jChk')}</button></div>`)}
+async function chkJoin(){await go(async()=>{const r=await api('chk');if(r.join.length){toast(t('jNo'));rJoin(r.join)}else{toast(t('jOk'));tg?.HapticFeedback?.notificationOccurred('success');show('home')}})}
+function modal(h){$('#mb').innerHTML=h;$('#ov').classList.add('on')}function closeM(){$('#ov').classList.remove('on')}
+$('#ov').onclick=e=>{if(e.target.id=='ov')closeM()};
+const cp=x=>navigator.clipboard.writeText(x).then(()=>toast(t('copied')));
+const shareLink=l=>{const u='https://t.me/share/url?url='+encodeURIComponent(l);tg?.openTelegramLink?tg.openTelegramLink(u):window.open(u)};
+const openLk=l=>tg?.openLink?tg.openLink(l):window.open(l,'_blank');
+const openTg=l=>tg?.openTelegramLink?tg.openTelegramLink(l):window.open(l);
+async function setLang(k){LG=k;S.user.lang=k;applyLang();go(()=>api('settings',{lang:k}));show(cur)}
+
+/* ---------- navigation ---------- */
+const R={home:rHome,use:rUse,guide:rGuide,support:rSup,me:rMe,admin:rAdmin};
+async function show(x){cur=x;document.querySelectorAll('nav button').forEach(e=>e.classList.toggle('on',e.dataset.t==(x=='admin'?'me':x)));$('#view').innerHTML='<div class="sk"></div><div class="sk" style="height:200px"></div>';scrollTo(0,0);await go(()=>R[x]())}
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.t)};
+const view=h=>{$('#view').innerHTML=h};
+
+/* ---------- home / create ---------- */
+function drawM(){const e=$('#mem');if(!e)return;e.innerHTML=M.map((m,i)=>`<div class="add" style="margin-bottom:8px"><input value="${esc(m)}" placeholder="${t('memPh')}" maxlength="24" oninput="M[${i}]=this.value"><button class="btn d" onclick="M.splice(${i},1);drawM()">✕</button></div>`).join('')}
+function addM(v){if(M.length>=10)return;M.push(v);drawM()}
+async function rHome(){
+ if(!M.length)M=[t('cm')[0]];
+ view(`<div class="hero"><h1 class="gt">Bzgz Proxy</h1><div class="chips"><span class="chip">${t('c1')}</span><span class="chip">${t('c2')}</span><span class="chip">${t('c3')}</span></div><h2 class="hd">${t('head')}</h2><p class="sb">${t('sub')}</p></div>
+ <div class="card"><h3>${t('cT')}</h3>
+  <button class="btn p" style="margin:0 0 4px;padding:13px;font-size:14.5px" onclick="openLk(TOKEN_URL)">🔑 ${t('getTok')}</button><label>${t('tokL')}</label><input class="l" id="k" type="password" placeholder="${t('tokPh')}" autocomplete="off"><p class="hint">${t('perm')}</p>
+  <label>${t('accL')}</label><input class="l" id="a" placeholder="${t('accPh')}" autocomplete="off">
+  <label>${t('memL')}</label><div id="mem"></div><div>${t('cm').map((c,i)=>`<span class="pill" onclick="addM(${i==5?"''":"t('cm')["+i+"]"})">+ ${c}</span>`).join('')}</div>
+  <button class="btn p" id="cb" onclick="create()">${t('build')}</button></div><div id="made"></div>
+ <div class="card"><div class="note"><span class="ic">🔒</span><div><b>${t('secT')}</b><br>${t('secD')}</div></div></div>`+dlCard());drawM()}
+const dlCard=()=>`<div class="card"><h3>📲 ${t('dlT')}</h3><p class="hint" style="margin:-4px 2px 12px">${t('dlD')}</p><div class="stores"><button class="btn" onclick="openLk(STORE.g)">▶️ ${t('dlG')}</button><button class="btn" onclick="openLk(STORE.a)">🍎 ${t('dlA')}</button><button class="btn full" onclick="openLk(STORE.l)">⬇️ ${t('dlL')}</button></div></div>`
+const madeCard=l=>`<div class="card"><h3>${t('done')}</h3>`+l.map(p=>`<div class="row"><span>${esc(p.name)}</span><span><button class="btn s" onclick="cp('${p.enter}')">📋</button> <button class="btn s" onclick="openTg('${p.enter}')">➕</button></span></div>`).join('')+`<p style="color:var(--m);font-size:13px">🔒 ${t('gone')}</p></div>`;
+async function create(){const b=$('#cb');b.disabled=true;b.textContent=t('building');
+ await go(async()=>{try{const r=await api('create',{account:$('#a').value,token:$('#k').value,members:M.filter(Boolean)});$('#k').value='';M=[];drawM();
+  $('#made').innerHTML=madeCard(r.made);tg?.HapticFeedback?.notificationOccurred('success')}catch(e){if(e.made?.length)$('#made').innerHTML=madeCard(e.made);throw e}});
+ b.disabled=false;b.textContent=t('build')}
+
+/* ---------- usage ---------- */
+const rel=ts=>{if(!ts)return t('never');const d=(ts-Date.now())/1000,a=Math.abs(d),f=new Intl.RelativeTimeFormat(loc[LG],{numeric:'auto'});return a<3600?f.format(Math.round(d/60),'minute'):a<86400?f.format(Math.round(d/3600),'hour'):f.format(Math.round(d/86400),'day')};
+const ST=p=>p.off?['off','stOff']:p.fail>=2?['bad','stDn']:['ok','stOn'];
+const ab=(fn,ic,k,h,c='')=>`<button class="ab ${c}" onclick="${fn}"><b>${ic} ${t(k)}</b><small>${t(h)}</small></button>`;
+async function rUse(){
+ P=(await api('proxies')).proxies;
+ const rq=P.reduce((a,p)=>a+p.today.req,0),by=P.reduce((a,p)=>a+p.today.bytes,0);
+ if(!P.length)return view(`<div class="card"><h3>${t('useT')}</h3><p style="color:var(--m)">${t('noP')}</p><button class="btn p" onclick="show('home')">${t('nHome')}</button></div>`);
+ view(`<div class="card"><h3>${t('useT')}</h3><div class="grid"><div class="kpi"><b>${n(rq)}</b><small>${t('tReq')}</small></div><div class="kpi"><b>${fB(by)}</b><small>${t('tTraf')}</small></div></div></div>`+
+ P.map(p=>{const mx=Math.max(1,...p.spark),[sc,sk]=ST(p),L=`P.find(x=>x.id=='${p.id}').enter`;return `<div class="card pc ${p.off?'paused':''}"><h3>${esc(p.name)}<span class="badge ${sc}">${t(sk)}</span></h3><div class="seen">${t('seenL')}: ${rel(p.seen)}</div><div class="url">${esc(p.enter)}</div>
+ <div class="grid"><div class="kpi"><b>${n(p.today.req)}</b><small>${t('today')} · ${t('of')}</small></div><div class="kpi"><b>${fB(p.today.bytes)}</b><small>${t('week')}: ${fB(p.week)}</small></div></div>
+ <div class="spark">${p.spark.map(v=>`<i style="height:${Math.max(10,v/mx*100)}%"></i>`).join('')}</div>
+ ${p.off?`<p class="pn">${t('pausedNote')}</p>`:`<button class="btn p" style="margin-top:14px;padding:14px;font-size:14.5px" onclick="openTg(${L})">${t('addTg')}</button>`}
+ <div class="ag">${ab(`cp(${L})`,'📋','aCopy','hCopy')}${ab(`shareLink(${L})`,'📤','aShare','hShare')}${ab(`ren('${p.id}')`,'✏️','aRen','hRen')}${ab(`tok('update','${p.id}')`,'⬆️','aUpd','hUpd')}${ab(`tok('rotate','${p.id}')`,'🔄','aRot','hRot','w')}${p.off?ab(`tok('resume','${p.id}')`,'▶️','aRes','hRes'):ab(`tok('pause','${p.id}')`,'⏸','aPause','hPause','w')}${ab(`delM('${p.id}')`,'🗑️','aDel','hDel','d')}</div></div>`}).join('')+dlCard())}
+function ren(id){const p=P.find(x=>x.id==id);modal(`<h3>${t('renT')}</h3><input id="rn" value="${esc(p.name)}" maxlength="24"><button class="btn p" onclick="go(async()=>{await api('rename',{id:'${id}',name:$('#rn').value});closeM();rUse()})">${t('save')}</button>`)}
+const TA={update:{r:'update',T:'updT',W:'tokNote'},rotate:{r:'rotate',T:'rotT',W:'rotW'},pause:{r:'power',x:{on:false},T:'pauseT',W:'pauseW'},resume:{r:'power',x:{on:true},T:'resumeT',W:'resumeW'},delete:{r:'delete',T:'delT',W:'tokNote'}};
+function tok(act,id){const a=TA[act];modal(`<h3>${t(a.T)}</h3><p style="color:var(--m);font-size:13.5px;line-height:1.9">${t(a.W)}</p><p class="hint">${t('tokNote')}</p><button class="btn" style="margin-top:10px;width:100%" onclick="openLk(TOKEN_URL)">🔑 ${t('getTok')}</button><input class="l" id="tk" type="password" placeholder="${t('tok')}" autocomplete="off" style="margin-top:10px"><input class="l" id="ta" placeholder="${t('acc')} (${t('accL').match(/\((.*)\)/)?.[1]||''})" autocomplete="off" style="margin-top:10px"><button class="btn p" id="tb" onclick="doTok('${act}','${id}')">${t('ok')}</button>`)}
+async function doTok(act,id){const b=$('#tb'),a=TA[act];b.disabled=true;await go(async()=>{await api(a.r,{id,account:$('#ta').value,token:$('#tk').value,...a.x});closeM();toast(t('doneT'));rUse()});b.disabled=false}
+function delM(id){modal(`<h3>${t('rmT')}</h3><p style="color:var(--m);font-size:13.5px;line-height:1.9">${t('rmB')}</p><button class="btn p" onclick="go(async()=>{await api('delete',{id:'${id}'});closeM();rUse()})">${t('rmL')}</button><button class="btn p" style="background:var(--bad);box-shadow:none" onclick="tok('delete','${id}')">${t('rmF')}</button>`)}
+
+/* ---------- guide ---------- */
+async function rGuide(){view(`<div class="card"><h3>${t('gT')}</h3><ol class="st"><li>${t('g1')}</li><li>${t('g2')}</li><li>${t('g3')}</li><li>${t('g4')}</li></ol></div>
+ <div class="card"><h3>${t('fq')}</h3>${[1,2,3,4].map(i=>`<details><summary>${t('q'+i)}</summary><p>${t('a'+i)}</p></details>`).join('')}</div>`+dlCard())}
+
+/* ---------- support ---------- */
+async function rSup(){const r=await api('tickets');view(`<div class="card"><h3>🆘 ${t('supT')}</h3><textarea id="st" placeholder="${t('supPh')}"></textarea><button class="btn p" onclick="newT()">${t('send')}</button></div>`+
+ (r.tickets.length?`<div class="card"><h3>${t('myT')}</h3>`+r.tickets.map(x=>`<div class="row" onclick="thread(${x.id},false)" style="cursor:pointer"><span>#${x.id} ${esc(x.subject)}</span><span>${x.status=='open'?'🟢':'⚪'}</span></div>`).join('')+'</div>':''))}
+async function newT(){await go(async()=>{await api('tnew',{text:$('#st').value});toast(t('sentT'));rSup()})}
+async function thread(id,adm){await go(async()=>{const r=await api('ticket',{id,admin:adm}),f=adm?'a_reply':'tnew';
+ modal(`<h3>#${id} ${esc(r.ticket.subject)}</h3>`+r.msgs.map(m=>`<div class="msg ${m.admin?'a':'u'}">${esc(m.text)}<br><small style="opacity:.55">${fD(m.ts)}</small></div>`).join('')+
+ `<textarea id="rp" placeholder="${t('msgPh')}"></textarea><button class="btn p" onclick="go(async()=>{await api('${f}',{id:${id},text:$('#rp').value});toast(t('sentT'));thread(${id},${adm})})">${t('send')}</button>`+
+ (adm?`<div class="acts"><button class="btn s" onclick="go(async()=>{await api('a_close',{id:${id},open:${r.ticket.status!='open'}});closeM();AC='tickets';rAdmin()})">${r.ticket.status=='open'?t('closeT'):t('reopen')}</button></div>`:''))})}
+
+/* ---------- me ---------- */
+async function rMe(){const u=S.user;view(`<div class="card" style="text-align:center"><div class="logo" style="width:72px;height:72px;font-size:32px;margin:0 auto 12px">${esc((u.name||'?')[0])}</div><h3 style="justify-content:center;margin:0">${esc(u.name)}</h3><p style="color:var(--m);margin:6px 0 0">ID ${u.id} · ${t('joined')} ${fD(u.joined)}</p></div>
+ <div class="card"><div class="row"><span>🔔 ${t('notif')}</span><input type="checkbox" id="nt" style="width:22px;height:22px;margin:0" ${u.notify?'checked':''} onchange="api('settings',{notify:this.checked}).then(()=>toast(t('doneT')))"></div></div>`+
+ (u.role!='user'?`<button class="btn p" onclick="show('admin')">🛠️ ${t('adm')}</button>`:''))}
+
+/* ---------- admin ---------- */
+async function rAdmin(){const T=[['stats',t('aS')],['users',t('aU')],['tickets',t('aT')]];if(S.user.role=='owner')T.push(['settings',t('aG')]);
+ view(`<div class="tg">${T.map(x=>`<span class="pill ${x[0]==AC?'on':''}" onclick="AC='${x[0]}';rAdmin()">${x[1]}</span>`).join('')}</div><div id="ab"></div>`);await A[AC]()}
+const A={
+ async stats(){const r=await api('a_stats'),s=r.stats,mx=Math.max(1,...r.spark.map(x=>x.b));
+  $('#ab').innerHTML=`<div class="grid"><div class="kpi"><b>${n(s.users)}</b><small>${t('kU')}</small></div><div class="kpi"><b>+${n(s.newToday)}</b><small>${t('kN')}</small></div><div class="kpi"><b>${n(s.active24)}</b><small>${t('kA')}</small></div><div class="kpi"><b>${n(s.proxies)}</b><small>${t('kP')} (${n(s.down)} ${t('kD')})</small></div><div class="kpi"><b>${n(s.req)}</b><small>${t('tReq')}</small></div><div class="kpi"><b>${fB(s.bytes)}</b><small>${t('tTraf')}</small></div></div>
+  <div class="card" style="margin-top:14px"><h3>${t('d14')}</h3><div class="spark" style="height:70px">${r.spark.map(x=>`<i style="height:${Math.max(10,x.b/mx*100)}%"></i>`).join('')}</div></div>
+  <div class="card"><h3>🏆 ${t('top')}</h3>${r.top.map(x=>`<div class="row" onclick="auser(${x.id})" style="cursor:pointer"><span>${esc(x.name)}</span><span>${fB(x.b)}</span></div>`).join('')||'<p>—</p>'}</div>`},
+ async users(){$('#ab').innerHTML=`<div class="card"><input id="uq" placeholder="${t('sr')}"><button class="btn p" onclick="go(ulist)">${t('go')}</button></div>
+  <div class="card"><h3>${t('addU')}</h3><input class="l" id="nid" placeholder="${t('idPh')}"><button class="btn p" onclick="go(async()=>{await api('a_adduser',{id:$('#nid').value});toast(t('doneT'));ulist()})">${t('save')}</button></div><div id="ul"></div>`;await ulist()},
+ async tickets(f='open'){const r=await api('a_tickets',{f});$('#ab').innerHTML=`<div class="tg"><span class="pill ${f=='open'?'on':''}" onclick="A.tickets('open')">${t('open')}</span><span class="pill ${f=='closed'?'on':''}" onclick="A.tickets('closed')">${t('closed')}</span></div><div class="card">`+(r.tickets.map(x=>`<div class="row" onclick="thread(${x.id},true)" style="cursor:pointer"><span>#${x.id} ${esc(x.name)}: ${esc(x.subject)}</span><span>${fD(x.upd)}</span></div>`).join('')||`<p style="color:var(--m)">${t('noT')}</p>`)+'</div>'},
+ async settings(){const [ad,ch]=await Promise.all([api('a_admins'),api('a_channels')]);
+  $('#ab').innerHTML=`<div class="card"><h3>👮 ${t('admins')}</h3>${ad.admins.map(a=>`<div class="row"><span>${esc(a.name)} <code>${a.id}</code></span><button class="btn s d" onclick="go(async()=>{await api('a_rmadmin',{id:${a.id}});A.settings()})">✕</button></div>`).join('')}
+   <input class="l" id="aid" placeholder="${t('aIdPh')}" style="margin-top:10px"><button class="btn p" onclick="go(async()=>{await api('a_addadmin',{id:$('#aid').value});A.settings()})">${t('addA')}</button></div>
+  <div class="card"><h3>🔒 ${t('fj')}</h3><div class="row" style="padding-top:0"><span><b>${t('lockL')}</b><br><small style="color:var(--m)">${t('lockD')}</small></span><label class="sw" style="margin:0"><input type="checkbox" ${ch.lock?'checked':''} onchange="go(async()=>{await api('a_fj',{on:this.checked});toast(t('doneT'))})"><i></i></label></div><p style="color:var(--m);font-size:13px">${t('fjD')}</p>${ch.channels.map(c=>`<div class="row"><span>${esc(c.title)} <code>${esc(c.id)}</code></span><button class="btn s d" onclick="go(async()=>{await api('a_rmch',{id:'${c.id}'});A.settings()})">✕</button></div>`).join('')}
+   <input class="l" id="cid" placeholder="${t('chPh')}" style="margin-top:10px"><input class="l" id="clk" placeholder="${t('clk')}" style="margin-top:10px"><button class="btn p" onclick="go(async()=>{await api('a_addch',{id:$('#cid').value,link:$('#clk').value});A.settings()})">${t('addC')}</button></div>
+  <div class="card"><h3>📣 ${t('bc')}</h3><textarea id="bc" placeholder="${t('bcPh')}"></textarea><button class="btn p" onclick="if(confirm(t('sure')))go(async()=>{await api('a_bc',{text:$('#bc').value});toast(t('queued'))})">${t('all')}</button></div>`}};
+async function ulist(){const r=await api('a_users',{q:$('#uq')?.value||''});$('#ul').innerHTML='<div class="card">'+r.users.map(u=>`<div class="row" onclick="auser(${u.id})" style="cursor:pointer"><span>${u.banned?'⛔ ':''}${esc(u.name)} <code>${u.id}</code></span><span>${fD(u.joined)}</span></div>`).join('')+'</div>'}
+async function auser(id){await go(async()=>{const r=await api('a_user',{id}),u=r.user;
+ modal(`<h3>${esc(u.name)} <code>${u.id}</code></h3><p style="color:var(--m)">${t('joined')} ${fD(u.joined)} · ${t('kP')}: ${n(r.proxies.length)}</p>`+r.proxies.map(p=>`<div class="row"><span><i class="dot ${p.fail>=2?'bad':''}"></i>${esc(p.name)}</span><span>${fB(p.b30)} · ${n(p.r30)}</span></div>`).join('')+
+ `<div class="acts"><button class="btn s ${u.banned?'':'d'}" onclick="go(async()=>{await api('a_ban',{id:${u.id},ban:${!u.banned}});closeM();toast(t('doneT'))})">${u.banned?t('unban'):t('ban')}</button></div>`)})}
+
+/* ---------- boot ---------- */
+(async()=>{applyLang();await go(async()=>{S=await api('me');if(I[S.user.lang]){LG=S.user.lang;applyLang()}
+ if(S.join&&S.join.length)return rJoin(S.join);
+ const h=location.hash.slice(1),al={create:'home',proxies:'use'},x=al[h]||h;show(R[x]?x:'home')})})();
+</script></body></html>

@@ -1,0 +1,82 @@
+<div dir="rtl" align="right">
+
+# راهنمای نصب
+
+[English](SETUP.md)
+
+## ۱. پیش‌نیازها
+- Node.js نسخه‌ی ۱۸ به بالا و npm
+- اکانت کلودفلر (پلن رایگان کافی است)
+- توکن ربات از [@BotFather](https://t.me/BotFather)
+- آیدی عددی تلگرام خودتان (از [@userinfobot](https://t.me/userinfobot))
+
+## ۲. توکن کلودفلر برای دیپلوی ربات
+از <https://dash.cloudflare.com/profile/api-tokens> بروید به *Create Token*، بعد *Custom token* و **Start with an Account policy**. این دسترسی‌ها را بدهید:
+- `Workers Scripts` روی **Edit**
+- `D1` روی **Edit**
+- Account Resources: اکانت خودتان
+
+برای Wrangler این‌طور بدهید: `export CLOUDFLARE_API_TOKEN=...` (هرگز در گیت نگذارید).
+
+## ۳. دیتابیس
+```bash
+npx wrangler d1 create bzgz-proxy
+```
+مقدار `database_id` را در `wrangler.toml` بگذارید و بعد:
+```bash
+npm run db:init
+```
+دیتابیس قدیمی دارید؟ `bash migrate.sh` را بزنید (ستون‌های ناقص را اضافه می‌کند و پیام «duplicate column» مشکلی ندارد).
+
+## ۴. تنظیم و دیپلوی
+1. در `wrangler.toml` مقدار `OWNER_ID` را برابر آیدی عددی خودتان بگذارید.
+2. سیکرت‌ها را اضافه کنید:
+   ```bash
+   npx wrangler secret put BOT_TOKEN
+   npx wrangler secret put WH_SECRET     # یک رشته‌ی تصادفی بلند و محرمانه
+   ```
+3. `npm run deploy`
+4. یک‌بار `https://<your-worker>.workers.dev/setup/<WH_SECRET>` را در مرورگر باز کنید. باید `"ok":true` ببینید.
+5. به ربات `/start` بفرستید.
+
+## ۵. جوین اجباری
+1. ربات را **ادمین** یک کانال عمومی کنید.
+2. با اکانت owner بزنید `/addchannel @yourchannel` (یا از پنل، بخش تنظیمات).
+3. با یک اکانت عادی تست کنید. owner و ادمین‌ها معاف هستند. با `/testjoin` پیش‌نمایش می‌بینید و با `/joininfo` عیب‌یابی می‌کنید.
+
+کاربری که عضو نشده در ربات و در مینی‌اپ بلاک می‌شود. عضویت ۶۰ ثانیه کش می‌شود. اگر تلگرام چک عضویت را رد کند (مثلاً ربات ادمین نیست)، کاربران رد می‌شوند و ساعتی یک‌بار به owner هشدار می‌رسد.
+
+## ۶. تنظیمات هسته‌ی پروکسی
+متغیرهای اختیاری روی ورکر هر پروکسی:
+| متغیر | معنی |
+|---|---|
+| `GEO` | کشورهای مجاز، مثل `IR,DE`. خالی یعنی همه |
+| `LANES_PER_IP` | حداکثر اتصال هم‌زمان برای هر IP (پیش‌فرض ۱۲۸) |
+| `MAX_LANES` | حداکثر اتصال هم‌زمان برای هر نمونه‌ی ورکر (پیش‌فرض ۲۰۰۰) |
+
+پروکسی‌های قدیمی تا وقتی کاربر در پنل **آپدیت** را نزند، هسته‌ی قبلی را دارند.
+
+## ۷. دستورها
+کاربران: `/start /proxies /profile /support /help /new /cancel`
+ادمین‌ها: `/admin /user id /ban id /unban id /adduser id /broadcast text /testjoin /joininfo`
+owner: `/addadmin id /rmadmin id /addchannel @x /rmchannel @x`
+
+## عیب‌یابی
+| نشانه | علت محتمل |
+|---|---|
+| `Authentication error` روی `/d1/database` | توکن دسترسی **D1 → Edit** ندارد |
+| `404 Not Found` از تلگرام موقع ثبت وب‌هوک | `BOT_TOKEN` اشتباه یا باطل‌شده |
+| ربات بعد از دیپلوی ساکت است | وب‌هوک ثبت نشده؛ دوباره `/setup/<WH_SECRET>` را باز کنید |
+| جوین اجباری برای شما کار نمی‌کند | شما owner یا ادمین هستید (معاف) |
+| جوین اجباری هیچ‌کس را بلاک نمی‌کند | ربات ادمین کانال نیست؛ `/joininfo` را بزنید |
+
+</div>
+
+## توکن برای کاربران (با یک کلیک)
+
+ربات و مینی‌اپ کاربر را به صفحه‌ی آماده‌ی کلودفلر می‌برند ([باز کردن](https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%5D&accountId=*&zoneId=all&name=Bzgz)): دسترسی‌های *Workers Scripts: Edit* و *Account Settings: Read* از قبل انتخاب شده؛ فقط **Continue → Create Token** را بزنید.
+
+## جوین اجباری
+
+- `/addchannel @name` (ربات باید ادمین کانال باشد) یا برای کانال خصوصی `/addchannel -100123… https://t.me/+invite` (اگر ربات اجازه‌ی ساخت لینک دعوت دارد، لینک اختیاری است).
+- `/lock on|off` یا کلید داخل مینی‌اپ ← تنظیمات، جوین اجباری را بدون حذف کانال‌ها روشن/خاموش می‌کند. `/testjoin` نمایش کاربر غیرعضو را نشان می‌دهد.

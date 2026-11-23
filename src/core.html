@@ -1,0 +1,400 @@
+// Bzgz WEB Proxy core v4 — Telegram "WEB proxy" (protocol v1, websocket-lanes carrier) on Cloudflare Workers.
+// Env: MTSECRET (32 hex, optional "dd" prefix) | PID, SECRET, REPORT (usage self-report + keyed health check)
+// Optional env: GEO ("IR,DE" = allowed countries) | LANES_PER_IP (default 128) | MAX_LANES (default 2000)
+//
+// What is new compared to v3:
+//  - every deployment serves its own, different Persian decoy site (seeded from the hostname)
+//  - /health answers only to the owner (header x-k = SECRET); everybody else gets the decoy
+//  - token key is derived from the secret (key separation) and every compare is constant-time
+//  - dial to Telegram retries; lane back-pressure cap; per-IP and global lane caps; optional GEO allow-list
+//  - AES-CTR counter maths without BigInt; stream position is advanced synchronously (no ordering races)
+//  - frame reader tolerates frames split across WebSocket messages
+const VERSION = '4.0';
+const enc = new TextEncoder();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ---------------- bytes ---------------- */
+const b64u = (u) => { let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const hex2 = (h) => { const o = new Uint8Array(h.length >> 1); for (let i = 0; i < o.length; i++) o[i] = parseInt(h.substr(i * 2, 2), 16); return o; };
+const hex = (u) => { let s = ''; for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16); return s; };
+const be32 = (n) => Uint8Array.of((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+function join(...parts) {
+  let n = 0; for (const p of parts) n += p.length;
+  const o = new Uint8Array(n); let k = 0;
+  for (const p of parts) { o.set(p, k); k += p.length; }
+  return o;
+}
+function same(a, b) { // constant-time compare of strings or byte arrays
+  a = typeof a === 'string' ? enc.encode(a) : a; b = typeof b === 'string' ? enc.encode(b) : b;
+  let d = a.length ^ b.length; const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) d |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  return d === 0;
+}
+const sha = async (u) => new Uint8Array(await crypto.subtle.digest('SHA-256', u));
+const hmacKey = (raw) => crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+const hmac = async (raw, msg) => new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(raw), typeof msg === 'string' ? enc.encode(msg) : msg));
+
+/* ---------------- configuration and tokens ---------------- */
+let CONF = { raw: '', val: null };
+async function conf(env) {
+  const raw = String(env.MTSECRET || '').toLowerCase();
+  if (!/^(dd)?[0-9a-f]{32}$/.test(raw)) return null;
+  if (CONF.raw === raw) return CONF.val;
+  const S = hex2(raw), s16 = S.length === 17 ? S.slice(1) : S;
+  const tk = await hmacKey(await hmac(s16, 'bzgz/v4/token-key'));
+  CONF = { raw, val: { S, s16, tk } };
+  return CONF.val;
+}
+const bridgeCap = async (cfg, host) => b64u(await hmac(cfg.S, 'tdesktop-web-proxy-bridge-v1\n' + host));
+async function mint(cfg, kind, ttl) {
+  const e = (Date.now() + ttl).toString(36).padStart(9, '0');
+  return kind + e + b64u(new Uint8Array(await crypto.subtle.sign('HMAC', cfg.tk, enc.encode('t' + kind + e))));
+}
+async function valid(cfg, tok, kind) {
+  if (typeof tok !== 'string' || tok.length !== 53 || tok[0] !== kind) return false;
+  const e = tok.slice(1, 10);
+  const mac = b64u(new Uint8Array(await crypto.subtle.sign('HMAC', cfg.tk, enc.encode('t' + kind + e))));
+  return same(mac, tok.slice(10)) && parseInt(e, 36) >= Date.now();
+}
+
+/* ---------------- AES-CTR stream with a byte position ---------------- */
+function addBlocks(iv, n) { // 128-bit big-endian counter + n
+  const o = iv.slice(); let carry = 0;
+  for (let i = 15; i >= 0; i--) {
+    const s = o[i] + (n % 256) + carry; n = Math.floor(n / 256);
+    o[i] = s & 255; carry = s >> 8;
+    if (!n && !carry) break;
+  }
+  return o;
+}
+class Stream {
+  constructor(key, iv) { this.key = key; this.iv = iv; this.pos = 0; this.ck = null; }
+  async run(data) {
+    if (!data.length) return data;
+    if (!this.ck) this.ck = await crypto.subtle.importKey('raw', this.key, 'AES-CTR', false, ['encrypt']);
+    const off = this.pos % 16, blk = Math.floor(this.pos / 16);
+    this.pos += data.length; // advance before awaiting so concurrent calls keep their order
+    const buf = new Uint8Array(off + data.length); buf.set(data, off);
+    const out = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CTR', counter: addBlocks(this.iv, blk), length: 128 }, this.ck, buf));
+    return off ? out.subarray(off) : out;
+  }
+}
+
+/* ---------------- MTProto transport helpers ---------------- */
+const TAGS = new Set(['efefefef', 'eeeeeeee', 'dddddddd']);
+const FORBID = new Set([0x44414548, 0x54534f50, 0x20544547, 0x4954504f, 0xdddddddd, 0xeeeeeeee, 0x02010316]);
+function nextLen(b, tag) { // length of the first full transport packet in b, 0 = need more, -1 = invalid
+  if (tag === 'efefefef') {
+    if (!b.length) return 0;
+    let head = 1, words = b[0] & 0x7f;
+    if (words === 0x7f) { if (b.length < 4) return 0; head = 4; words = b[1] | (b[2] << 8) | (b[3] << 16); }
+    const total = head + words * 4;
+    if (total > 16777216) return -1;
+    return b.length >= total ? total : 0;
+  }
+  if (b.length < 4) return 0;
+  const len = ((b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0) & 0x7fffffff;
+  if (len > 16777216) return -1;
+  return b.length >= 4 + len ? 4 + len : 0;
+}
+function makeInit(tag, dcRaw) {
+  for (;;) {
+    const b = crypto.getRandomValues(new Uint8Array(64));
+    const w = (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
+    if (b[0] === 0xef || FORBID.has(w) || !(b[4] | b[5] | b[6] | b[7])) continue;
+    b.set(tag, 56); b[60] = dcRaw & 255; b[61] = (dcRaw >> 8) & 255;
+    return b;
+  }
+}
+async function dial(dc, media) {
+  const url = `https://kws${dc}${media ? '-1' : ''}.web.telegram.org/apiws`;
+  let err = new Error('upstream');
+  for (let i = 0; i < 3; i++) {
+    let lost = false;
+    try {
+      const attempt = fetch(url, { headers: { Upgrade: 'websocket', Origin: 'https://web.telegram.org', 'Sec-WebSocket-Protocol': 'binary' } });
+      attempt.then((r) => { if (lost && r.webSocket) { r.webSocket.accept(); r.webSocket.close(1000); } }, () => {});
+      const r = await Promise.race([attempt, sleep(7000).then(() => { lost = true; throw new Error('timeout'); })]);
+      if (r.webSocket) { r.webSocket.accept(); return r.webSocket; }
+    } catch (e) { err = e; }
+    await sleep(150 * (i + 1));
+  }
+  throw err;
+}
+
+/* ---------------- usage self-report ---------------- */
+const M = { r: 0, b: 0, t: 0 };
+function tick(env, ctx, r = 0) {
+  M.r += r;
+  if (!env.REPORT || !env.PID || Date.now() - M.t < 300000 || (!M.r && !M.b)) return;
+  const body = JSON.stringify({ p: env.PID, k: env.SECRET, r: M.r, b: M.b });
+  M.r = 0; M.b = 0; M.t = Date.now();
+  ctx.waitUntil(fetch(env.REPORT, { method: 'POST', body, headers: { 'content-type': 'application/json' } }).catch(() => {}));
+}
+
+/* ---------------- decoy: a small Persian blog, different for every hostname ---------------- */
+const NAMES = ['یادداشت‌های روزانه', 'دفترچه‌ی کوچک', 'کنج آرام', 'نوشته‌های شبانه', 'از پشت پنجره', 'لحظه‌های ساده', 'دفتر قدیمی', 'کلبه‌ی چای', 'گوشه‌ی دنج', 'سیاه‌مشق'];
+const TOPICS = [
+  { n: 'قهوه', t: ['دمای مناسب برای دم کردن قهوه', 'چرا قهوه‌ی صبح طعم دیگری دارد', 'تجربه‌ی من از آسیاب دستی'], s: ['بعد از چند هفته آزمون و خطا فهمیدم آب خیلی داغ تلخی قهوه را بیشتر می‌کند.', 'دانه‌های تازه‌برشته‌شده را همیشه در ظرف دربسته نگه می‌دارم.', 'اندازه‌ی آسیاب بیشتر از هر چیز دیگری روی طعم نهایی اثر می‌گذارد.', 'صبح‌ها اولین فنجان را آهسته و بی‌عجله می‌نوشم.', 'برای من قهوه بهانه‌ای است برای چند دقیقه سکوت.'] },
+  { n: 'دوچرخه‌سواری', t: ['مسیرهای خاکی نزدیک رودخانه', 'اولین سفر یک‌روزه با دوچرخه', 'نگهداری ساده از زنجیر دوچرخه'], s: ['مسیر کوتاه است و بیشتر آن خاکی، برای همین لاستیک پهن‌تر انتخاب خوبی است.', 'همیشه یک تیوب یدک و تلمبه‌ی کوچک همراه خودم می‌برم.', 'عصرهای آخر هفته بهترین زمان برای رکاب زدن است.', 'زنجیر تمیز و روغن‌کاری‌شده عمر قطعات را چند برابر می‌کند.', 'بعد از هر مسیر طولانی، یک لیوان آب خنک مثل جایزه است.'] },
+  { n: 'آشپزی', t: ['نان خانگی با خمیر ترش', 'سوپ ساده‌ی یک‌شبه', 'ادویه‌هایی که همیشه در کابینت دارم'], s: ['خمیر باید آرام و در دمای اتاق ور بیاید تا طعمش کامل شود.', 'هیچ‌وقت نمک را یک‌جا اضافه نمی‌کنم و آخر کار مزه می‌کنم.', 'کمی صبر کردن بیشتر از هر ادویه‌ای به غذا مزه می‌دهد.', 'سبزی تازه را آخر کار اضافه می‌کنم تا رنگ و عطرش بماند.', 'غذای ساده وقتی با حوصله پخته شود از هر غذای پیچیده‌ای بهتر است.'] },
+  { n: 'باغبانی', t: ['گل‌های آپارتمانی که کم‌توقع‌اند', 'آبیاری درست در تابستان', 'خاک خوب، نصف کار است'], s: ['بیشتر گیاهان آپارتمانی از زیاده‌آبی بیشتر آسیب می‌بینند تا از کم‌آبی.', 'گلدان کنار پنجره‌ی رو به شرق بهترین نور صبحگاهی را می‌گیرد.', 'هر چند هفته یک بار برگ‌ها را با پارچه‌ی نمدار پاک می‌کنم.', 'زهکشی خوب ته گلدان جلوی پوسیدن ریشه را می‌گیرد.', 'دیدن یک جوانه‌ی تازه خستگی چند هفته را از تن بیرون می‌کند.'] },
+  { n: 'کتاب', t: ['کتاب‌هایی که امسال تمام کردم', 'خواندن آهسته و بی‌عجله', 'یادداشت‌برداری از حاشیه‌ی کتاب'], s: ['هر شب قبل از خواب چند صفحه می‌خوانم و همین عادت ساده زندگی‌ام را عوض کرد.', 'کتاب‌های قدیمی بوی خاصی دارند که هیچ نسخه‌ی دیجیتالی ندارد.', 'گاهی یک جمله‌ی کوتاه چند روز در ذهنم می‌ماند.', 'حاشیه‌نویسی با مداد کمک می‌کند بعدها دوباره پیدایش کنم.', 'فهرست کتاب‌های نخوانده‌ام هیچ‌وقت کوتاه نمی‌شود و این اشکالی ندارد.'] },
+  { n: 'عکاسی', t: ['نور صبح در کوچه‌های قدیمی', 'چند نکته برای عکس‌های ساده', 'چرا هنوز با دوربین قدیمی عکس می‌گیرم'], s: ['ساعت اول بعد از طلوع نرم‌ترین نور روز را دارد.', 'بیشتر وقت‌ها بهترین عکس همان است که برنامه‌ریزی نکرده بودم.', 'قاب‌بندی ساده معمولاً از ترکیب پیچیده بهتر جواب می‌دهد.', 'بعد از هر گشت فقط چند عکس را نگه می‌دارم و بقیه را حذف می‌کنم.', 'عکس خوب گاهی فقط یادآور یک صبح آرام است.'] },
+];
+const fnv = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+function prng(seed) { let a = seed; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const pick = (r, a) => a[Math.floor(r() * a.length)];
+function shuffle(r, a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const fa = (s) => String(s).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+const SITES = new Map();
+function site(host) {
+  let S = SITES.get(host);
+  if (S) return S;
+  const r = prng(fnv(host));
+  const name = pick(r, NAMES), hue = Math.floor(r() * 360), serif = r() < 0.5;
+  const posts = shuffle(r, TOPICS).slice(0, 5).map((t) => ({
+    topic: t.n, title: pick(r, t.t), body: shuffle(r, t.s).slice(0, 3 + Math.floor(r() * 2)),
+    date: fa(`${1403 + Math.floor(r() * 4)}/${1 + Math.floor(r() * 12)}/${1 + Math.floor(r() * 28)}`),
+  }));
+  S = { name, hue, serif, posts };
+  if (SITES.size > 200) SITES.clear();
+  SITES.set(host, S);
+  return S;
+}
+const html = (status, body, h = {}) => new Response(body, { status, headers: { 'content-type': 'text/html;charset=utf-8', 'x-content-type-options': 'nosniff', ...h } });
+function shell(S, title, inner) {
+  const css = `body{font-family:${S.serif ? 'Vazirmatn,Tahoma,serif' : 'Vazirmatn,Tahoma,sans-serif'};max-width:680px;margin:7vh auto;padding:0 20px;color:#2b2b2b;line-height:2;background:hsl(${S.hue},25%,98%)}a{color:hsl(${S.hue},55%,40%);text-decoration:none}header{border-bottom:1px solid hsl(${S.hue},20%,88%);margin-bottom:10px}h1{font-size:26px;margin:0 0 6px}nav a{margin-left:16px;font-size:14px}article{margin:26px 0}h2,h3{margin:0}small{color:#888}footer{color:#999;font-size:13px;margin-top:40px}`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | ${S.name}</title><style>${css}</style></head><body><header><h1><a href="/">${S.name}</a></h1><nav><a href="/">خانه</a><a href="/about">درباره</a></nav></header><main>${inner}</main><footer>© ${S.name}</footer></body></html>`;
+}
+function decoy(host, path) {
+  const S = site(host), cache = { 'cache-control': 'public, max-age=300' };
+  if (path === '/' || path === '/index.html') return html(200, shell(S, 'خانه', S.posts.map((p, i) => `<article><h3><a href="/posts/${i + 1}">${p.title}</a></h3><small>${p.topic} · ${p.date}</small><p>${p.body[0]}</p></article>`).join('')), cache);
+  if (path === '/about') return html(200, shell(S, 'درباره', '<p>این وب‌نوشت را یک نفر، از کنار یک پنجره‌ی کوچک می‌نویسد. بدون تبلیغ، بدون ردیابی و بدون خبرنامه.</p>'), cache);
+  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\n', { headers: { 'content-type': 'text/plain', ...cache } });
+  if (path === '/favicon.ico') return new Response(null, { status: 204 });
+  const m = path.match(/^\/posts\/(\d+)$/);
+  if (m && S.posts[m[1] - 1]) { const p = S.posts[m[1] - 1]; return html(200, shell(S, p.title, `<article><h2>${p.title}</h2><small>${p.topic} · ${p.date}</small><p>${p.body.join(' ')}</p></article>`), cache); }
+  return html(404, shell(S, 'صفحه پیدا نشد', '<h2>صفحه‌ای که دنبالش بودید پیدا نشد</h2><p><a href="/">بازگشت به خانه</a></p>'));
+}
+
+/* ---------------- bridge page (runs inside the Telegram app's private WebView) ---------------- */
+const BRIDGE = `(function(){'use strict';
+var BOOT=__BOOT__,P=window.TelegramWebProxy;
+if(!P)return;
+var hm=(location.hash||'').match(/android=([A-Za-z0-9_-]{43})/),nonce=hm?hm[1]:'';
+try{history.replaceState(null,'','/')}catch(e){}
+var sess=null,lanes={},closed=false,up=0,down=0;
+function toApp(x){try{P.postMessage(x)}catch(e){}}
+function ctl(o){toApp(JSON.stringify(o))}
+function head(t,id){var b=new Uint8Array(8);b[0]=t;b[1]=(id>>16)&255;b[2]=(id>>8)&255;b[3]=id&255;return b.buffer}
+function shutdown(){if(closed)return;closed=true;ctl({t:'close'});for(var k in lanes){try{lanes[k].ws.close()}catch(e){}}lanes={}}
+function view(d){if(d instanceof ArrayBuffer)return new Uint8Array(d);if(ArrayBuffer.isView(d))return new Uint8Array(d.buffer,d.byteOffset,d.byteLength);return null}
+function hello(f){
+ fetch('/api/v1/session',{method:'POST',headers:{'Authorization':'Bearer '+BOOT,'Content-Type':'application/octet-stream'},body:f,mode:'same-origin',credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer'})
+ .then(function(r){if(r.status!==200)throw 0;sess=r.headers.get('X-Session-Token');if(!sess)throw 0;return r.arrayBuffer()})
+ .then(function(b){toApp(b)}).catch(shutdown)}
+function lane(id,first){
+ if(!sess||closed){shutdown();return}
+ var ws;try{ws=new WebSocket('wss://'+location.host+'/api/v1/ws',['tproxy-lane-v1.'+sess+'.'+id])}catch(e){shutdown();return}
+ ws.binaryType='arraybuffer';
+ var L={ws:ws,q:[first],done:false,open:false};lanes[id]=L;
+ function finish(){if(L.done)return;L.done=true;delete lanes[id];if(!L.open){shutdown();return}toApp(head(3,id))}
+ ws.onopen=function(){L.open=true;for(var i=0;i<L.q.length;i++)ws.send(L.q[i]);L.q=[]};
+ ws.onmessage=function(ev){if(typeof ev.data==='string')return;var b=new Uint8Array(ev.data);down+=b.length;toApp(ev.data);if(b[0]===3){L.done=true;try{ws.close()}catch(e){}delete lanes[id]}};
+ ws.onclose=finish;ws.onerror=finish}
+function frame(t,id,f){
+ if(t===16){hello(f);return}
+ if(t===6||id===0)return;
+ var L=lanes[id];
+ if(t===1){if(!L)lane(id,f);return}
+ if(!L)return;
+ if(t===3){L.done=true;delete lanes[id];if(L.open){try{L.ws.send(f)}catch(e){}}try{L.ws.close()}catch(e){}return}
+ up+=f.length;if(L.open)L.ws.send(f);else L.q.push(f)}
+function split(u){var o=0;while(o+8<=u.length){var t=u[o],id=(u[o+1]<<16)|(u[o+2]<<8)|u[o+3],n=u[o+4]*16777216+((u[o+5]<<16)|(u[o+6]<<8)|u[o+7]);if(o+8+n>u.length)break;var f=u.slice(o,o+8+n);o+=8+n;frame(t,id,f)}}
+P.onmessage=function(e){var d=e&&e.data!==undefined?e.data:e;
+ if(typeof d==='string'){try{var c=JSON.parse(d);if(c&&c.t==='close')shutdown()}catch(x){}return}
+ var u=view(d);if(u)split(u)};
+setInterval(function(){if(!closed&&sess){ctl({t:'traffic',up:up,down:down});up=0;down=0}},5000);
+ctl({t:'tproxy-android-init',v:1,nonce:nonce});
+})();`;
+async function bridge(cfg, host) {
+  const nonce = b64u(crypto.getRandomValues(new Uint8Array(18)));
+  const boot = await mint(cfg, 'b', 120000);
+  const csp = `default-src 'none'; base-uri 'none'; child-src 'none'; connect-src 'self' wss://${host}; font-src 'none'; form-action 'none'; frame-ancestors http://127.0.0.1:*; frame-src 'none'; img-src 'none'; manifest-src 'none'; media-src 'none'; object-src 'none'; script-src 'nonce-${nonce}'; style-src 'none'; worker-src 'none'; sandbox allow-same-origin allow-scripts`;
+  const title = site(host.split(':')[0]).name;
+  const page = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><script nonce="${nonce}">${BRIDGE.replace('__BOOT__', JSON.stringify(boot))}</script></body></html>`;
+  return html(200, page, { 'content-security-policy': csp, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'x-dns-prefetch-control': 'off' });
+}
+
+/* ---------------- session: HELLO -> WELCOME ---------------- */
+async function session(req, cfg, host) {
+  const m = (req.headers.get('authorization') || '').match(/^Bearer (\S+)$/);
+  if (!m || !(await valid(cfg, m[1], 'b'))) return decoy(host, '/404');
+  const b = new Uint8Array(await req.arrayBuffer());
+  const ok = b.length === 9 && b[0] === 0x10 && !(b[1] | b[2] | b[3]) && !(b[4] | b[5] | b[6]) && b[7] === 1 && b[8] === 1;
+  if (!ok) return decoy(host, '/404');
+  return new Response(Uint8Array.of(0x11, 0, 0, 0, 0, 0, 0, 0), { status: 200, headers: { 'content-type': 'application/octet-stream', 'x-session-token': await mint(cfg, 's', 24 * 3600e3), 'x-down-cursor': '0', 'x-carrier-mode': 'websocket-lanes', 'cache-control': 'no-store' } });
+}
+
+/* ---------------- lanes: one WebSocket == one Telegram connection ---------------- */
+const IPS = new Map();
+let LIVE = 0;
+const MAX_IN = 12 * 1048576, MAX_FRAME = 4 * 1048576, MAX_QUEUE = 16 * 1048576;
+
+class Lane {
+  constructor(sock, id, env, ctx, cfg, release) {
+    this.sock = sock; this.id = id; this.env = env; this.ctx = ctx; this.cfg = cfg; this.release = release;
+    this.inb = new Uint8Array(0); this.opened = false; this.dead = false; this.started = false; this.firstOut = true;
+    this.hold = new Uint8Array(0); this.clear = new Uint8Array(0); this.credit = 4194304; this.dq = []; this.dqBytes = 0;
+    this.jobs = Promise.resolve(); this.downJobs = Promise.resolve();
+    sock.addEventListener('message', (e) => this.onMessage(e));
+    sock.addEventListener('close', () => this.stop(false));
+    sock.addEventListener('error', () => this.stop(false));
+  }
+  frame(t, pl) { const n = pl ? pl.length : 0, b = new Uint8Array(8 + n); b[0] = t; b[1] = (this.id >> 16) & 255; b[2] = (this.id >> 8) & 255; b[3] = this.id & 255; b.set(be32(n), 4); if (n) b.set(pl, 8); return b; }
+  put(b) { try { this.sock.send(b); } catch {} }
+  stop(notify) {
+    if (this.dead) return; this.dead = true;
+    if (notify) this.put(this.frame(3));
+    try { this.sock.close(1000); } catch {}
+    try { this.up && this.up.close(1000); } catch {}
+    this.dq = []; this.release(); tick(this.env, this.ctx);
+  }
+  pump() {
+    while (this.dq.length && this.credit > 0) {
+      const c = this.dq[0], n = Math.min(c.length, this.credit, 65536);
+      this.put(this.frame(2, c.subarray(0, n))); this.credit -= n; this.dqBytes -= n;
+      if (n === c.length) this.dq.shift(); else this.dq[0] = c.subarray(n);
+    }
+  }
+  onMessage(ev) {
+    if (this.dead) return;
+    if (typeof ev.data === 'string') return this.stop(false);
+    this.inb = join(this.inb, new Uint8Array(ev.data));
+    if (this.inb.length > MAX_IN) return this.stop(false);
+    while (this.inb.length >= 8) {
+      const b = this.inb, t = b[0], sid = (b[1] << 16) | (b[2] << 8) | b[3], n = b[4] * 16777216 + ((b[5] << 16) | (b[6] << 8) | b[7]);
+      if (sid !== this.id || n > MAX_FRAME) return this.stop(false);
+      if (b.length < 8 + n) break;
+      const pl = b.slice(8, 8 + n); this.inb = b.subarray(8 + n);
+      this.dispatch(t, pl);
+      if (this.dead) return;
+    }
+  }
+  dispatch(t, pl) {
+    if (!this.opened) { if (t !== 1) return this.stop(false); this.opened = true; return tick(this.env, this.ctx, 1); }
+    if (t === 2) {
+      this.jobs = this.jobs.then(async () => { if (this.dead) return; await this.feed(pl); this.put(this.frame(4, be32(pl.length))); }).catch(() => this.stop(true));
+    } else if (t === 4 && pl.length === 4) {
+      this.credit += pl[0] * 16777216 + ((pl[1] << 16) | (pl[2] << 8) | pl[3]); this.pump();
+    } else if (t === 3) this.stop(false);
+  }
+  async handshake(init) {
+    const s16 = this.cfg.s16;
+    this.rx = new Stream(await sha(join(init.subarray(8, 40), s16)), init.slice(40, 56));
+    const back = init.slice(8, 56).reverse();
+    this.tx = new Stream(await sha(join(back.subarray(0, 32), s16)), back.slice(32, 48));
+    const d = await this.rx.run(init);
+    const tag = d.slice(56, 60); this.tag = hex(tag);
+    if (!TAGS.has(this.tag)) throw new Error('tag');
+    const raw = ((d[60] | (d[61] << 8)) << 16) >> 16, dc = Math.abs(raw);
+    if (dc < 1 || dc > 5) throw new Error('dc');
+    const i2 = makeInit(tag, raw);
+    this.upTx = new Stream(i2.slice(8, 40), i2.slice(40, 56));
+    const e = await this.upTx.run(i2);
+    this.wire = i2.slice(); this.wire.set(e.subarray(56, 64), 56);
+    const r2 = i2.slice(8, 56).reverse();
+    this.upRx = new Stream(r2.slice(0, 32), r2.slice(32, 48));
+    const up = await dial(dc, raw < 0);
+    if (this.dead) { try { up.close(1000); } catch {} throw new Error('gone'); }
+    this.up = up;
+    up.addEventListener('message', (ev) => this.onUp(ev));
+    up.addEventListener('close', () => this.stop(true));
+    up.addEventListener('error', () => this.stop(true));
+  }
+  onUp(ev) {
+    if (typeof ev.data === 'string') return;
+    const data = new Uint8Array(ev.data);
+    this.downJobs = this.downJobs.then(async () => {
+      if (this.dead) return;
+      const out = await this.tx.run(await this.upRx.run(data));
+      M.b += out.length;
+      for (let o = 0; o < out.length; o += 65536) { const c = out.subarray(o, o + 65536); this.dq.push(c); this.dqBytes += c.length; }
+      if (this.dqBytes > MAX_QUEUE) return this.stop(true);
+      this.pump();
+    }).catch(() => this.stop(true));
+  }
+  async feed(chunk) {
+    M.b += chunk.length;
+    let data = chunk;
+    if (!this.started) {
+      this.hold = join(this.hold, chunk);
+      if (this.hold.length < 64) return;
+      this.started = true;
+      const init = this.hold.slice(0, 64); data = this.hold.slice(64); this.hold = null;
+      await this.handshake(init);
+    }
+    if (!data.length) return;
+    this.clear = join(this.clear, await this.rx.run(data));
+    for (;;) {
+      const n = nextLen(this.clear, this.tag);
+      if (n < 0) throw new Error('frame');
+      if (!n) break;
+      const pkt = this.clear.slice(0, n); this.clear = this.clear.subarray(n);
+      const e = await this.upTx.run(pkt);
+      this.up.send(this.firstOut ? join(this.wire, e) : e); this.firstOut = false;
+    }
+  }
+}
+
+function geoOk(req, env) {
+  if (!env.GEO) return true;
+  const c = String(req.headers.get('cf-ipcountry') || (req.cf && req.cf.country) || '').toUpperCase();
+  return !!c && String(env.GEO).toUpperCase().split(/[\s,]+/).includes(c);
+}
+async function laneWs(req, env, ctx, cfg, host) {
+  if (req.headers.get('Upgrade') !== 'websocket') return decoy(host, '/404');
+  const proto = req.headers.get('Sec-WebSocket-Protocol') || '';
+  const m = proto.match(/^tproxy-lane-v1\.([A-Za-z0-9_-]+)\.(\d{1,8})$/);
+  if (!m || !(await valid(cfg, m[1], 's'))) return decoy(host, '/404');
+  const id = Number(m[2]);
+  if (!id || id > 0xffffff) return decoy(host, '/404');
+  const ip = req.headers.get('cf-connecting-ip') || '?', perIp = Number(env.LANES_PER_IP) || 128, total = Number(env.MAX_LANES) || 2000;
+  if ((IPS.get(ip) || 0) >= perIp || LIVE >= total) return decoy(host, '/404');
+  IPS.set(ip, (IPS.get(ip) || 0) + 1); LIVE++;
+  let freed = false;
+  const release = () => { if (freed) return; freed = true; LIVE--; const n = (IPS.get(ip) || 1) - 1; if (n > 0) IPS.set(ip, n); else IPS.delete(ip); };
+  const [client, server] = Object.values(new WebSocketPair());
+  server.accept();
+  new Lane(server, id, env, ctx, cfg, release);
+  return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': proto } });
+}
+
+/* ---------------- entry ---------------- */
+export default {
+  async fetch(req, env, ctx) {
+    try { return await route(req, env, ctx); } catch (e) { return decoy(new URL(req.url).hostname, '/404'); }
+  },
+};
+async function route(req, env, ctx) {
+  const url = new URL(req.url), p = url.pathname, host = url.hostname.toLowerCase(), cfg = await conf(env);
+  if (p === '/health') {
+    const key = String(env.SECRET || '');
+    if (key && !same(req.headers.get('x-k') || '', key)) return decoy(host, '/404');
+    return new Response(JSON.stringify({ ok: true, v: VERSION }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+  if (!cfg || !geoOk(req, env)) return decoy(host, p === '/' ? '/' : '/404');
+  if (p === '/' && req.method === 'GET' && url.searchParams.has('bridge')) {
+    const q = [...url.searchParams];
+    if (q.length === 1 && q[0][0] === 'bridge' && same(q[0][1], await bridgeCap(cfg, host))) return bridge(cfg, url.host);
+    return decoy(host, '/');
+  }
+  if (p === '/api/v1/session') {
+    if (req.method === 'POST') return session(req, cfg, host);
+    if (req.method === 'DELETE') return new Response(null, { status: 204 });
+    return decoy(host, '/404');
+  }
+  if (p === '/api/v1/ws') return laneWs(req, env, ctx, cfg, host);
+  return decoy(host, p);
+}

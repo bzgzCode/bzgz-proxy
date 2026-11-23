@@ -1,0 +1,20 @@
+name = "bzgz-proxy"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# OWNER_ID = your numeric Telegram id (get it from @userinfobot)
+[vars]
+OWNER_ID = "123456789"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bzgz-proxy"
+database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
