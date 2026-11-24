@@ -59,6 +59,16 @@ Users: `/start /proxies /profile /support /help /new /cancel`
 Admins: `/admin /user id /ban id /unban id /adduser id /broadcast text /testjoin /joininfo`
 Owner: `/addadmin id /rmadmin id /addchannel @x /rmchannel @x`
 
+## Sharing, usage page, updates (v7)
+
+- **Share:** Mini App → Usage → *Share* on a proxy (or the bot's proxy card → 🤝 Share). Choose a name and a password. Friends use *Use a friend's proxy* in the bot. Always set a password.
+- **Usage page:** after a proxy is updated to v7 the *Usage page* button opens `https://<proxy>.workers.dev/_u/<secret>`. Keep that link private.
+- **Updates are manual:** the panel shows *Update available*; nothing changes until the owner of the proxy taps *Update now* and enters their own token.
+
+## Hard network conditions
+
+Nobody can promise a proxy will never be blocked. What helps: keep a fixed location close to you and run the *Ping test*; keep two or three proxies; use *New link* if one is blocked; put the worker on your own custom domain in Cloudflare (Workers → your worker → Settings → Domains & Routes) instead of workers.dev, which is blocked more often; do not share links publicly — share by name with a password.
+
 ## Troubleshooting
 | Symptom | Likely cause |
 |---|---|
@@ -76,3 +86,11 @@ The bot and Mini App link users to a pre-filled Cloudflare page ([open it](https
 
 - `/addchannel @name` (bot must be channel admin) or, for a private channel, `/addchannel -100123… https://t.me/+invite` (the invite link is optional if the bot may create invite links).
 - `/lock on|off` or the switch in Mini App → Settings turns the requirement on/off without removing channels. `/testjoin` previews what a non-member sees.
+
+## Updating
+
+Re-run the same deploy command. Your users' data (proxies, names, usage, tickets, channels, forced-join switch, paused proxies, locations) lives in D1 and is **never touched** by a deploy; missing tables are created automatically. Existing proxies keep running with their current core until their owner taps **Update** in the Mini App — that keeps the link, the pause state, the chosen location and any variables added in the Cloudflare dashboard.
+
+## Server location
+
+When creating or updating a proxy the user can pick **Auto**, **Europe**, **USA** or **Asia**. A fixed region uses Cloudflare's placement hints (`aws:eu-central-1`, `aws:us-east-1`, `aws:ap-southeast-1`); if Cloudflare refuses it, the proxy is deployed with Auto instead. It only changes where the worker runs — the proxy core itself is not modified. Real-world speed depends on the user's network, so try the options.

@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node --no-warnings test/e2e.mjs src/core.html",
+    "test": "node --no-warnings test/e2e.mjs src/core.html && BZGZ_WRAP=src/worker.js node --no-warnings test/e2e.mjs src/core.html",
     "db:init": "wrangler d1 execute bzgz-proxy --remote --file=schema.sql"
   },
   "devDependencies": { "wrangler": "^4" }

@@ -8,8 +8,16 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const file = process.argv[2], V4 = process.argv[3] !== 'v3';
-const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'core-')), 'core.mjs');
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'core-'));
+let tmp = path.join(dir, 'core.mjs');
 fs.copyFileSync(file, tmp);
+// BZGZ_WRAP=<path to src/worker.js>: run the very same test through the wrapper that is deployed in front of the core (core stays untouched as core.js)
+if (process.env.BZGZ_WRAP) {
+  fs.copyFileSync(file, path.join(dir, 'core.js'));
+  const wrap = fs.readFileSync(process.env.BZGZ_WRAP, 'utf8').match(/const WRAP = `([\s\S]*?)\n`;/)[1].replace(/\\\\/g, '\\');
+  tmp = path.join(dir, 'wrapped.mjs');
+  fs.writeFileSync(tmp, wrap);
+}
 
 /* ---- minimal Workers runtime ---- */
 const R0 = globalThis.Response;

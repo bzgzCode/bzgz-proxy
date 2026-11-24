@@ -12,6 +12,8 @@ A Telegram bot + Mini App that lets anyone deploy personal **Telegram WEB proxie
 - **Health monitoring** — owners get a Telegram message when a proxy goes down.
 - **Forced channel join** (public or private channels), lockable with `/lock on|off`, enforced in the bot *and* in the Mini App API.
 - **Proxy controls** in the Mini App: status, pause/resume, new link, update, rename, delete.
+- **Fixed server location** (Auto / Europe / USA / Asia) and **updates that keep every user's settings**.
+- **Share by name** — a friend types `saman` (+ optional password) in the bot and uses your proxy without a token; **usage page** on each proxy's own link; **manual, opt-in updates** with an in-app notice; ping test.
 - **Support tickets**, admin panel, ban/unban, broadcast.
 - **Proxy core v4** — per-deployment decoy website (Persian), keyed `/health`, constant-time checks, per-IP and global lane caps, optional country allow-list.
 
@@ -37,7 +39,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Requirements: Node.js 18+, a Cloudflare account, a bot token from [@BotFather](https://t.me/BotFather), your numeric Telegram id.
 
 ```bash
-git clone https://github.com/bzgzCode/bzgz-proxy && cd bzgz-proxy
+git clone https://github.com/<you>/bzgz-proxy && cd bzgz-proxy
 npm install
 npx wrangler d1 create bzgz-proxy      # copy database_id into wrangler.toml
 npm run db:init

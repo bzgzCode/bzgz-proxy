@@ -1,5 +1,23 @@
 # Changelog
 
+## 7.0
+
+- **Share a proxy by name:** the owner gives a proxy a name (e.g. `saman`) and an optional password; a friend writes it in the bot (or `/use saman`, or the “Use a friend's proxy” button) and gets the proxy — no Cloudflare account or token. Passwords are stored as salted PBKDF2-SHA256 hashes, 5 wrong tries lock the name for 15 minutes and alert the owner, “New link” or removing the share cuts everyone off.
+- **Usage page on each proxy's own link:** `https://<proxy>.workers.dev/_u/<secret>` shows today / 7-day traffic. Served by a thin wrapper deployed in front of the unmodified core; without the secret the path behaves like any other.
+- **Forced join lives in the bot chat**, not in the Mini App: the bot sends the join message with buttons, the panel only points to it.
+- **Manual updates only:** each proxy records its code version; the panel shows an “Update available” notice with release notes and an *Update now* button. Nothing is ever pushed to users' proxies, and declining keeps the old version working.
+- Ping test button (device → proxy delay), cleaner cards, fixes: replies are now awaited so they cannot be dropped.
+- Proxy core unchanged.
+
+## 6.0
+
+- **Updates never wipe users' settings:** schema is created idempotently at start-up; proxy *Update* keeps link, pause state, location and custom Cloudflare variables (`keep_bindings`).
+- **Fixed server location** (Auto / Europe / USA / Asia) via Cloudflare placement hints, chosen when creating or updating a proxy. Proxy core unchanged.
+- **Forced join:** fails closed when mis-configured (bot not admin) instead of letting everyone in; `/lock on` self-tests every channel.
+- **Security:** webhook secret-token header, constant-time secret comparisons, strict CSP and security headers on the Mini App, clearer in-app security card, security model documented.
+- Removed the hard-coded credit handle from the code.
+- Mini App: nicer navigation, location picker, security card.
+
 ## Unreleased
 
 - Forced join can be switched on/off from the bot (`/lock on|off`) and from the Mini App settings; users see a "you have joined" confirmation after joining and on `/start`.
