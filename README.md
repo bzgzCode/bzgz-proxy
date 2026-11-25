@@ -15,7 +15,7 @@ A Telegram bot + Mini App that lets anyone deploy personal **Telegram WEB proxie
 - **Fixed server location** (Auto / Europe / USA / Asia) and **updates that keep every user's settings**.
 - **Share by name** — a friend types `saman` (+ optional password) in the bot and uses your proxy without a token; **usage page** on each proxy's own link; **manual, opt-in updates** with an in-app notice; ping test.
 - **Support tickets**, admin panel, ban/unban, broadcast.
-- **Proxy core v4** — per-deployment decoy website (Persian), keyed `/health`, constant-time checks, per-IP and global lane caps, optional country allow-list.
+- **Proxy core v5** — per-deployment decoy website (Persian), keyed `/health`, constant-time checks, hedged upstream dial, lane retry (no session drops), per-IP and global lane caps, optional country allow-list.
 
 ## How it works
 

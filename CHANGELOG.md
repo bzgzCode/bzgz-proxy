@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.1
+
+- **Proxy core v5 — fewer disconnects.** A lane that fails to open is retried (3 times, short back-off) and only that lane is dropped; before, one failed connection closed the whole session, which looked like constant reconnecting. The Telegram-side dial is hedged (parallel attempts, first socket that opens wins). Per-IP lane cap raised from 128 to 1024 because many mobile subscribers (CGNAT) share one address. Fewer buffer copies on the hot path.
+- **13 server locations with country flags** (Netherlands, Germany, UK, France, Sweden, UAE, Bahrain, India, Singapore, Japan, USA, plus Smart and Automatic).
+- Prettier action buttons.
+- Existing proxies keep running the old core until their owner taps *Update*.
+
 ## 7.0
 
 - **Share a proxy by name:** the owner gives a proxy a name (e.g. `saman`) and an optional password; a friend writes it in the bot (or `/use saman`, or the “Use a friend's proxy” button) and gets the proxy — no Cloudflare account or token. Passwords are stored as salted PBKDF2-SHA256 hashes, 5 wrong tries lock the name for 15 minutes and alert the owner, “New link” or removing the share cuts everyone off.
@@ -7,6 +14,8 @@
 - **Forced join lives in the bot chat**, not in the Mini App: the bot sends the join message with buttons, the panel only points to it.
 - **Manual updates only:** each proxy records its code version; the panel shows an “Update available” notice with release notes and an *Update now* button. Nothing is ever pushed to users' proxies, and declining keeps the old version working.
 - Ping test button (device → proxy delay), cleaner cards, fixes: replies are now awaited so they cannot be dropped.
+- **Smart placement** is now the default server location (best for mobile data); fixed regions remain available.
+- Compact 3-column action tiles on proxy cards (much shorter page).
 - Proxy core unchanged.
 
 ## 6.0

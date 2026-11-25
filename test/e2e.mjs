@@ -249,7 +249,14 @@ test('per-IP lane cap', async () => {
   const c = await boot(HEX(), { LANES_PER_IP: '2' }, '9.9.9.9'), { app } = c;
   app.send(1, 1); app.send(1, 2); await sleep(60);
   ok(!app.ctls.some((x) => x.t === 'close'), 'first two lanes must be accepted');
-  app.send(1, 3); await waitFor(() => app.ctls.some((x) => x.t === 'close')); c.stop();
+  app.send(1, 3); await waitFor(() => app.closed(3), 8000);
+  ok(!app.ctls.some((x) => x.t === 'close'), 'a refused lane must not tear down the whole session (v5)'); c.stop();
+}, true);
+test('lane that cannot open is retried, other lanes survive', async () => {
+  const c = await boot(HEX(), { LANES_PER_IP: '1' }, '8.8.8.8'), { app } = c;
+  app.send(1, 1); await sleep(80); app.send(1, 2);
+  await waitFor(() => app.closed(2), 8000);
+  ok(!app.closed(1) && !app.ctls.some((x) => x.t === 'close'), 'lane 1 and the session must stay up'); c.stop();
 }, true);
 
 let fail = 0;

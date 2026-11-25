@@ -1,6 +1,11 @@
-// Bzgz WEB Proxy core v4 — Telegram "WEB proxy" (protocol v1, websocket-lanes carrier) on Cloudflare Workers.
+// Bzgz WEB Proxy core v5 — Telegram "WEB proxy" (protocol v1, websocket-lanes carrier) on Cloudflare Workers.
 // Env: MTSECRET (32 hex, optional "dd" prefix) | PID, SECRET, REPORT (usage self-report + keyed health check)
-// Optional env: GEO ("IR,DE" = allowed countries) | LANES_PER_IP (default 128) | MAX_LANES (default 2000)
+// Optional env: GEO ("IR,DE" = allowed countries) | LANES_PER_IP (default 1024) | MAX_LANES (default 2000)
+//
+// What is new in v5 (stability on mobile networks):
+//  - the Telegram-side dial is hedged: a second and third attempt start while the first is still pending, the first socket that opens wins
+//  - the bridge retries a lane that failed to open (3 times, short back-off) and only drops that one lane; one hiccup no longer tears down the whole session
+//  - per-IP lane cap raised to 1024 because many mobile subscribers (CGNAT) share one address
 //
 // What is new compared to v3:
 //  - every deployment serves its own, different Persian decoy site (seeded from the hostname)
@@ -9,7 +14,7 @@
 //  - dial to Telegram retries; lane back-pressure cap; per-IP and global lane caps; optional GEO allow-list
 //  - AES-CTR counter maths without BigInt; stream position is advanced synchronously (no ordering races)
 //  - frame reader tolerates frames split across WebSocket messages
-const VERSION = '4.0';
+const VERSION = '5.0';
 const enc = new TextEncoder();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,6 +24,8 @@ const hex2 = (h) => { const o = new Uint8Array(h.length >> 1); for (let i = 0; i
 const hex = (u) => { let s = ''; for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16); return s; };
 const be32 = (n) => Uint8Array.of((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
 function join(...parts) {
+  let nz = 0, last = null; for (const p of parts) if (p.length) { nz++; last = p; }
+  if (nz <= 1) return last || new Uint8Array(0); // nothing to merge: skip the copy (hot path, most reads arrive whole)
   let n = 0; for (const p of parts) n += p.length;
   const o = new Uint8Array(n); let k = 0;
   for (const p of parts) { o.set(p, k); k += p.length; }
@@ -106,20 +113,31 @@ function makeInit(tag, dcRaw) {
     return b;
   }
 }
-async function dial(dc, media) {
+function openUp(url) {
+  return fetch(url, { headers: { Upgrade: 'websocket', Origin: 'https://web.telegram.org', 'Sec-WebSocket-Protocol': 'binary' } }).then((r) => {
+    if (!r.webSocket) throw new Error('no websocket');
+    r.webSocket.accept(); return r.webSocket;
+  });
+}
+// Hedged dial: attempt 1 now, attempt 2 after 1.2 s, attempt 3 after 2.8 s (or immediately when the previous one failed). First socket that opens wins, late ones are closed.
+function dial(dc, media) {
   const url = `https://kws${dc}${media ? '-1' : ''}.web.telegram.org/apiws`;
-  let err = new Error('upstream');
-  for (let i = 0; i < 3; i++) {
-    let lost = false;
-    try {
-      const attempt = fetch(url, { headers: { Upgrade: 'websocket', Origin: 'https://web.telegram.org', 'Sec-WebSocket-Protocol': 'binary' } });
-      attempt.then((r) => { if (lost && r.webSocket) { r.webSocket.accept(); r.webSocket.close(1000); } }, () => {});
-      const r = await Promise.race([attempt, sleep(7000).then(() => { lost = true; throw new Error('timeout'); })]);
-      if (r.webSocket) { r.webSocket.accept(); return r.webSocket; }
-    } catch (e) { err = e; }
-    await sleep(150 * (i + 1));
-  }
-  throw err;
+  return new Promise((resolve, reject) => {
+    let done = false, pending = 0, started = 0, last = new Error('upstream');
+    const timers = [];
+    const end = () => { done = true; timers.forEach(clearTimeout); };
+    const launch = () => {
+      if (done || started >= 3) return;
+      started++; pending++;
+      openUp(url).then((ws) => { if (done) { try { ws.close(1000); } catch {} } else { end(); resolve(ws); } }, (e) => { last = e; }).then(() => {
+        pending--;
+        if (done) return;
+        if (started < 3) launch(); else if (!pending) { end(); reject(last); }
+      });
+    };
+    launch();
+    timers.push(setTimeout(launch, 1200), setTimeout(launch, 2800), setTimeout(() => { if (!done) { end(); reject(new Error('timeout')); } }, 9000));
+  });
 }
 
 /* ---------------- usage self-report ---------------- */
@@ -188,28 +206,39 @@ var sess=null,lanes={},closed=false,up=0,down=0;
 function toApp(x){try{P.postMessage(x)}catch(e){}}
 function ctl(o){toApp(JSON.stringify(o))}
 function head(t,id){var b=new Uint8Array(8);b[0]=t;b[1]=(id>>16)&255;b[2]=(id>>8)&255;b[3]=id&255;return b.buffer}
-function shutdown(){if(closed)return;closed=true;ctl({t:'close'});for(var k in lanes){try{lanes[k].ws.close()}catch(e){}}lanes={}}
+function shutdown(){if(closed)return;closed=true;ctl({t:'close'});for(var k in lanes){lanes[k].done=true;try{lanes[k].ws&&lanes[k].ws.close()}catch(e){}}lanes={}}
 function view(d){if(d instanceof ArrayBuffer)return new Uint8Array(d);if(ArrayBuffer.isView(d))return new Uint8Array(d.buffer,d.byteOffset,d.byteLength);return null}
 function hello(f){
  fetch('/api/v1/session',{method:'POST',headers:{'Authorization':'Bearer '+BOOT,'Content-Type':'application/octet-stream'},body:f,mode:'same-origin',credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer'})
  .then(function(r){if(r.status!==200)throw 0;sess=r.headers.get('X-Session-Token');if(!sess)throw 0;return r.arrayBuffer()})
  .then(function(b){toApp(b)}).catch(shutdown)}
+var fails=0;
 function lane(id,first){
  if(!sess||closed){shutdown();return}
- var ws;try{ws=new WebSocket('wss://'+location.host+'/api/v1/ws',['tproxy-lane-v1.'+sess+'.'+id])}catch(e){shutdown();return}
- ws.binaryType='arraybuffer';
- var L={ws:ws,q:[first],done:false,open:false};lanes[id]=L;
- function finish(){if(L.done)return;L.done=true;delete lanes[id];if(!L.open){shutdown();return}toApp(head(3,id))}
- ws.onopen=function(){L.open=true;for(var i=0;i<L.q.length;i++)ws.send(L.q[i]);L.q=[]};
- ws.onmessage=function(ev){if(typeof ev.data==='string')return;var b=new Uint8Array(ev.data);down+=b.length;toApp(ev.data);if(b[0]===3){L.done=true;try{ws.close()}catch(e){}delete lanes[id]}};
- ws.onclose=finish;ws.onerror=finish}
+ var L={ws:null,q:[first],done:false,open:false,tries:0};lanes[id]=L;
+ function finish(){if(L.done)return;L.done=true;delete lanes[id];toApp(head(3,id))}
+ function retry(){
+  if(L.open||L.done||closed)return;
+  if(++L.tries>3){if(++fails>=6)shutdown();else finish();return}
+  setTimeout(dial,[0,250,700,1500][L.tries])}
+ function dial(){
+  if(L.done||closed)return;
+  var ws,bad=false;
+  function fail(){if(bad)return;bad=true;retry()}
+  try{ws=new WebSocket('wss://'+location.host+'/api/v1/ws',['tproxy-lane-v1.'+sess+'.'+id])}catch(e){fail();return}
+  ws.binaryType='arraybuffer';L.ws=ws;
+  ws.onopen=function(){L.open=true;fails=0;for(var i=0;i<L.q.length;i++)ws.send(L.q[i]);L.q=[]};
+  ws.onmessage=function(ev){if(typeof ev.data==='string')return;var b=new Uint8Array(ev.data);down+=b.length;toApp(ev.data);if(b[0]===3){L.done=true;try{ws.close()}catch(e){}delete lanes[id]}};
+  ws.onclose=function(){if(!L.open){fail();return}finish()};
+  ws.onerror=function(){if(!L.open)fail()}}
+ dial()}
 function frame(t,id,f){
  if(t===16){hello(f);return}
  if(t===6||id===0)return;
  var L=lanes[id];
  if(t===1){if(!L)lane(id,f);return}
  if(!L)return;
- if(t===3){L.done=true;delete lanes[id];if(L.open){try{L.ws.send(f)}catch(e){}}try{L.ws.close()}catch(e){}return}
+ if(t===3){L.done=true;delete lanes[id];if(L.open){try{L.ws.send(f)}catch(e){}}try{L.ws&&L.ws.close()}catch(e){}return}
  up+=f.length;if(L.open)L.ws.send(f);else L.q.push(f)}
 function split(u){var o=0;while(o+8<=u.length){var t=u[o],id=(u[o+1]<<16)|(u[o+2]<<8)|u[o+3],n=u[o+4]*16777216+((u[o+5]<<16)|(u[o+6]<<8)|u[o+7]);if(o+8+n>u.length)break;var f=u.slice(o,o+8+n);o+=8+n;frame(t,id,f)}}
 P.onmessage=function(e){var d=e&&e.data!==undefined?e.data:e;
@@ -360,7 +389,7 @@ async function laneWs(req, env, ctx, cfg, host) {
   if (!m || !(await valid(cfg, m[1], 's'))) return decoy(host, '/404');
   const id = Number(m[2]);
   if (!id || id > 0xffffff) return decoy(host, '/404');
-  const ip = req.headers.get('cf-connecting-ip') || '?', perIp = Number(env.LANES_PER_IP) || 128, total = Number(env.MAX_LANES) || 2000;
+  const ip = req.headers.get('cf-connecting-ip') || '?', perIp = Number(env.LANES_PER_IP) || 1024, total = Number(env.MAX_LANES) || 2000;
   if ((IPS.get(ip) || 0) >= perIp || LIVE >= total) return decoy(host, '/404');
   IPS.set(ip, (IPS.get(ip) || 0) + 1); LIVE++;
   let freed = false;

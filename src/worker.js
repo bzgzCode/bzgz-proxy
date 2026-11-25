@@ -4,7 +4,7 @@
 import PROXY_CODE from './core.html';
 import APP_HTML from './app.html';
 
-const BUNDLE = 'v7'; // bumped whenever the proxy code changes; users update their proxies themselves, nothing is ever pushed automatically
+const BUNDLE = 'v8'; // bumped whenever the proxy code changes; users update their proxies themselves, nothing is ever pushed automatically
 // Wrapper placed in front of the unmodified proxy core: serves the private usage page at /_u/<secret>, everything else goes to the core.
 const WRAP = `import core from './core.js';
 const E = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -632,11 +632,18 @@ async function cf(token, method, path, body, form) {
   return j.result;
 }
 // Fixed locations (Cloudflare "placement hints"): the worker runs in the chosen region instead of next to each visitor.
-const LOCS = { eu: 'aws:eu-central-1', us: 'aws:us-east-1', asia: 'aws:ap-southeast-1' };
+// smart = Cloudflare Smart Placement: the worker runs where the round-trip to Telegram is shortest (best default for mobile networks)
+// Region hints are {provider}:{region}. The hint says where the worker code runs relative to its backend (Telegram), Cloudflare may still adjust it.
+const LOCS = {
+  smart: { mode: 'smart' },
+  nl: { region: 'gcp:europe-west4' }, eu: { region: 'aws:eu-central-1' }, gb: { region: 'aws:eu-west-2' }, fr: { region: 'aws:eu-west-3' }, se: { region: 'aws:eu-north-1' },
+  ae: { region: 'aws:me-central-1' }, bh: { region: 'aws:me-south-1' }, in: { region: 'aws:ap-south-1' },
+  asia: { region: 'aws:ap-southeast-1' }, jp: { region: 'aws:ap-northeast-1' }, us: { region: 'aws:us-east-1' },
+};
 async function deploy(token, acc, id, vars, o = {}) {
   // keep:true  → settings the owner added in the Cloudflare dashboard (GEO, MAX_LANES, …) survive an update; only our own variables are overwritten
   // loc        → optional fixed region. If Cloudflare refuses an option we retry without it, so a deploy never fails because of a nice-to-have.
-  const place = LOCS[o.loc] ? { placement: { region: LOCS[o.loc] } } : {}, keep = o.keep ? { keep_bindings: ['plain_text', 'secret_text'] } : {};
+  const place = LOCS[o.loc] ? { placement: LOCS[o.loc] } : {}, keep = o.keep ? { keep_bindings: ['plain_text', 'secret_text'] } : {};
   const tries = [{ ...keep, ...place }, ...(place.placement ? [{ ...keep }] : []), ...(o.keep ? [{}] : [])].filter((x, i, a) => a.findIndex((y) => JSON.stringify(y) === JSON.stringify(x)) === i);
   let placed = false;
   for (const [i, extra] of tries.entries()) {
