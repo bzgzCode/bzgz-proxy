@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.2
+
+- **Step-by-step deploy screen** (token check → account → upload → enable → verify) with live progress and a clear error, for create, update and new-link.
+- **FAQ in the bot:** a “FAQ” button on the main menu with eight common questions and answers (Persian/English), plus a “Stability tips” button.
+- **Emergency kit:** one message with every proxy link (bot button or panel card) to keep in Saved Messages. No guarantee in a full shutdown.
+- **“Only from Iran” option** (GEO) in the update dialog.
+- **Daily-limit warning:** the free Cloudflare plan allows 100,000 requests/day per account; the panel warns at 80,000 because running out is a common reason a busy proxy drops.
+- New teal/blue colour theme, desktop layout, 13 locations with flags.
+
 ## 7.1
 
 - **Proxy core v5 — fewer disconnects.** A lane that fails to open is retried (3 times, short back-off) and only that lane is dropped; before, one failed connection closed the whole session, which looked like constant reconnecting. The Telegram-side dial is hedged (parallel attempts, first socket that opens wins). Per-IP lane cap raised from 128 to 1024 because many mobile subscribers (CGNAT) share one address. Fewer buffer copies on the hot path.

@@ -160,6 +160,11 @@ const detect = (from) => { const c = String(from?.language_code || '').slice(0, 
 const fmtDate = (t) => new Date(t).toISOString().slice(0, 10);
 const T = {
   en: {
+    bFaq: '❓ FAQ', faqT: '❓ <b>Frequently asked questions</b>\n\nTap a question:',
+    bKit: '🆘 Emergency kit', bTip: '💡 Stability tips',
+    kitHead: (n) => `🆘 <b>Emergency kit</b> — ${n} proxy link(s)\n\nKeep this message. Forward it to Saved Messages so the links stay on your phone even if the network or the bot is down. Try the links in order.`,
+    kitFoot: '⚠️ No guarantee. If the connection to the international internet is cut completely, no proxy can work. This only helps while the network is slow or half-open.',
+    tipText: '💡 <b>Keep your proxies stable</b>\n\n1. Make 3 proxies in different places (Smart, Netherlands, UK).\n2. Add them all in Telegram now (Settings → Data and Storage → Proxy).\n3. Forward the Emergency kit to Saved Messages.\n4. Keep them updated and not paused.\n5. Use your own domain in Cloudflare instead of workers.dev if you can.\n6. Share by name + password instead of posting links publicly.\n7. If one stops working, tap “New link”.',
     bUse: '🤝 Use a friend’s proxy', bShare: '🤝 Share', bUsage: '📊 Usage page', bBack2: '🔙 Back',
     useAsk: '🤝 <b>Use a friend’s proxy</b>\n\nSend the share name your friend gave you (for example <code>saman</code>). If it has a password I will ask for it.\n\nNo Cloudflare account is needed.\n/cancel to stop.',
     shNone: '⚠️ No shared proxy with that name. Check the spelling and try again.', shPass: '🔐 This proxy is password-protected. Send the password.\n\n🔒 I delete your message right away.',
@@ -190,6 +195,11 @@ const T = {
     joinedOk: '✅ You have joined — thank you! Everything is unlocked.', joinBroken: '⚠️ The membership check is temporarily unavailable (the owner has been notified). Please try again in a little while.', stOff: '⏸ Paused', limitErr: '⚠️ Limit reached: at most 30 proxies per user.',
   },
   ru: {
+    bFaq: '❓ Вопросы', faqT: '❓ <b>Частые вопросы</b>\n\nВыберите вопрос:',
+    bKit: '🆘 Аварийный набор', bTip: '💡 Советы',
+    kitHead: (n) => `🆘 <b>Аварийный набор</b> — ссылок: ${n}\n\nСохраните это сообщение, перешлите в «Избранное», чтобы ссылки были на телефоне даже без сети и бота. Пробуйте по порядку.`,
+    kitFoot: '⚠️ Без гарантий. Если выход в мировой интернет полностью отрезан, ни один прокси не работает. Это помогает только при медленной или частично открытой сети.',
+    tipText: '💡 <b>Как держать прокси стабильными</b>\n\n1. Сделайте 3 прокси в разных местах.\n2. Добавьте их все в Telegram заранее.\n3. Перешлите аварийный набор в «Избранное».\n4. Обновляйте и не ставьте на паузу.\n5. Свой домен в Cloudflare вместо workers.dev.\n6. Делитесь по имени и паролю, не публикуйте ссылки.\n7. Если не работает — «Новая ссылка».',
     bUse: '🤝 Прокси друга', bShare: '🤝 Поделиться', bUsage: '📊 Страница трафика', bBack2: '🔙 Назад',
     useAsk: '🤝 <b>Прокси друга</b>\n\nОтправьте имя, которое дал друг (например <code>saman</code>). Если есть пароль, я его спрошу.\n\nАккаунт Cloudflare не нужен.\n/cancel — отмена.',
     shNone: '⚠️ Такого общего прокси нет. Проверьте имя.', shPass: '🔐 Прокси защищён паролем. Отправьте пароль.\n\n🔒 Я сразу удаляю ваше сообщение.',
@@ -220,6 +230,11 @@ const T = {
     joinedOk: '✅ Вы подписались — спасибо! Всё разблокировано.', joinBroken: '⚠️ Проверка подписки временно недоступна (владелец уже уведомлён). Попробуйте чуть позже.', stOff: '⏸ Приостановлен', limitErr: '⚠️ Лимит: не более 30 прокси на пользователя.',
   },
   fa: {
+    bFaq: '❓ سوالات متداول', faqT: '❓ <b>سوالات متداول</b>\n\nیکی از سوال‌ها رو بزن:',
+    bKit: '🆘 کیت اضطراری', bTip: '💡 نکات پایداری',
+    kitHead: (n) => `🆘 <b>کیت اضطراری</b> — ${n} لینک پروکسی\n\nاین پیام رو نگه دار و به Saved Messages فوروارد کن تا حتی وقتی شبکه یا ربات قطع شد لینک‌ها روی گوشیت باشن. لینک‌ها رو به ترتیب امتحان کن.`,
+    kitFoot: '⚠️ تضمینی نیست. اگه ارتباط با اینترنت جهانی کامل قطع بشه هیچ پروکسی‌ای کار نمی‌کنه. این فقط وقتی کمک می‌کنه که شبکه کند یا نیمه‌بازه.',
+    tipText: '💡 <b>پایدار نگه داشتن پروکسی‌ها</b>\n\n۱. سه پروکسی توی جاهای مختلف بساز (هوشمند، هلند، انگلیس).\n۲. همه‌شون رو از الان توی تلگرام اضافه کن (تنظیمات ← داده و ذخیره‌سازی ← پروکسی).\n۳. کیت اضطراری رو به Saved Messages فوروارد کن.\n۴. آپدیت و روشن نگهشون دار.\n۵. اگه میشه دامنه‌ی شخصی خودت رو توی کلودفلر بذار.\n۶. با اسم و رمز اشتراک بذار، لینک رو عمومی پخش نکن.\n۷. اگه یکی کار نکرد «لینک جدید» بزن.\n',
     bUse: '🤝 پروکسی دوستم', bShare: '🤝 اشتراک‌گذاری', bUsage: '📊 صفحه‌ی حجم', bBack2: '🔙 برگشت',
     useAsk: '🤝 <b>استفاده از پروکسی دوستت</b>\n\nاسمی که دوستت بهت داده رو بفرست (مثلاً <code>saman</code>). اگه رمز داشته باشه ازت می‌پرسم.\n\nلازم نیست اکانت کلودفلر داشته باشی.\n/cancel برای لغو.',
     shNone: '⚠️ پروکسی اشتراکی با این اسم پیدا نشد. املاش رو چک کن.', shPass: '🔐 این پروکسی رمز داره. رمز رو بفرست.\n\n🔒 پیامت رو فوراً پاک می‌کنم.',
@@ -357,10 +372,15 @@ const joinMsg = (L, chs) => tr(L, 'joinTxt', chs) + (chs.some((c) => c.broken) ?
 const joinKb = (L, chs) => ({ inline_keyboard: [...chs.filter((c) => c.url).map((c) => [{ text: tr(L, 'joinGo', c), url: c.url }]), [{ text: tr(L, 'joinBtn'), callback_data: 'chk' }]] });
 
 /* ---------- screens ---------- */
+const FAQ = { fa: [["این ربات چیه؟","یه ربات تلگرام که برات یه پروکسی تلگرام روی حساب کلودفلر خودت می‌سازه. رایگان و متن‌باز."],["توکن کلودفلر امنه؟","توکن فقط برای ساخت پروکسی استفاده میشه و ذخیره نمیشه. بهتره بعد از ساخت پاکش کنی."],["چطور وصل بشم؟","بعد از ساخت، دکمه «افزودن به تلگرام» رو بزن و تایید کن. یا لینک پروکسی رو توی چت بزن."],["پروکسی قطع‌وصل میشه، چیکار کنم؟","اول آپدیت رو بزن (مینی‌اپ ← مصرف). بعد لوکیشن «هوشمند» یا هلند/آلمان رو امتحان کن. اگه حجم درخواست امروز نزدیک ۱۰۰ هزاره، سقف رایگان کلودفلر داره پر میشه؛ یه پروکسی دیگه بساز."],["کدوم لوکیشن بهتره؟","اول «هوشمند»، بعد هلند یا آلمان. با دانلود یه فایل توی تلگرام سرعت رو مقایسه کن؛ تست پینگ فقط فاصله تا کلودفلر رو نشون میده."],["چطور آپدیت کنم؟","مینی‌اپ ← مصرف ← دکمه «آپدیت». هیچ‌چیز خودکار آپدیت نمیشه و لینک و تنظیماتت همون می‌مونه."],["چطور به دوستم بدم؟","روی پروکسی «اشتراک‌گذاری» رو بزن، اسم و رمز بذار. دوستت توی ربات «پروکسی دوستم» رو می‌زنه و اسم رو می‌نویسه."],["اگه اینترنت قطع شد؟","«کیت اضطراری» رو از قبل به Saved Messages فوروارد کن و چند پروکسی توی جاهای مختلف داشته باش. در قطع کامل اینترنت بین‌الملل هیچ پروکسی‌ای کار نمی‌کنه."]], en: [["What is this bot?","A Telegram bot that builds a Telegram proxy on your own Cloudflare account. Free and open source."],["Is my Cloudflare token safe?","The token is only used to create the proxy and is never stored. Delete it afterwards."],["How do I connect?","After creating, tap “Add to Telegram” and confirm, or paste the proxy link in any chat."],["My proxy keeps dropping, what now?","Update it first (Mini App → Usage). Then try the Smart location or Netherlands/Germany. If today's requests are close to 100k, the free Cloudflare limit is running out — make another proxy."],["Which location is best?","Smart first, then Netherlands or Germany. Compare real speed by downloading a file in Telegram; the ping test only shows the distance to Cloudflare."],["How do I update?","Mini App → Usage → Update. Nothing updates automatically and your link and settings stay the same."],["How do I give it to a friend?","Tap “Share” on the proxy, set a name and a password. Your friend taps “Use a friend's proxy” in the bot and writes the name."],["What if the internet is cut?","Forward the Emergency kit to Saved Messages and keep a few proxies in different places. If the connection to the international internet is cut completely, no proxy works."]] };
+const faqOf = (L) => FAQ[L] || FAQ.en;
+const faqKb = (L) => back(L, faqOf(L).map(([q], i) => [{ text: q, callback_data: 'fq:' + i }]));
 const home = (L, o) => ({ inline_keyboard: [
   [{ text: tr(L, 'bNew'), callback_data: 'new' }, { text: tr(L, 'bUse'), callback_data: 'use' }],
   [{ text: tr(L, 'bList'), callback_data: 'list' }, { text: tr(L, 'bPanel'), web_app: { url: `${o}/app` } }],
   [{ text: tr(L, 'bProfile'), callback_data: 'profile' }, { text: tr(L, 'bSupport'), callback_data: 'sup' }],
+  [{ text: tr(L, 'bFaq'), callback_data: 'faq' }, { text: tr(L, 'bKit'), callback_data: 'kit' }],
+  [{ text: tr(L, 'bTip'), callback_data: 'tip' }],
   [{ text: tr(L, 'bLang'), callback_data: 'lang' }, { text: tr(L, 'bHelp'), callback_data: 'help' }],
 ] });
 const back = (L, extra = []) => ({ inline_keyboard: [...extra, [{ text: tr(L, 'bBack'), callback_data: 'home' }]] });
@@ -387,6 +407,14 @@ async function getUser(env, from) {
 }
 const offSet = async (env) => new Set((await all(env, "SELECT k FROM meta WHERE k LIKE 'off:%'")).map((r) => r.k.slice(4)));
 const myProxies = (env, uid) => all(env, 'SELECT id,name,url,enter,secret,created,fail,seen FROM proxies WHERE uid=? ORDER BY created', uid);
+
+// Emergency kit: every link of the user in ONE message, so it sits in the chat (and in Saved Messages if forwarded) when the network gets bad.
+async function kitText(env, L, uid) {
+  const ps = await myProxies(env, uid), off = await offSet(env);
+  if (!ps.length) return null;
+  return tr(L, 'kitHead', ps.length) + '\n\n' + ps.map((p, i) => `<b>${i + 1}.</b> ${esc(p.name)}${off.has(p.id) ? ' ⏸' : ''}\n<code>${esc(p.enter)}</code>`).join('\n\n') + '\n\n' + tr(L, 'kitFoot');
+}
+const kitKb = (L) => back(L, [[{ text: tr(L, 'bTip'), callback_data: 'tip' }]]);
 
 /* ---------- proxy sharing: a friend types the share name (and password) in the bot and gets the owner's proxy — no Cloudflare account needed ---------- */
 const ALIAS = /^[a-z0-9][a-z0-9_-]{2,23}$/;
@@ -582,6 +610,10 @@ async function onCallback(env, origin, q, u, L) {
   const p = id ? await one(env, 'SELECT * FROM proxies WHERE id=? AND uid=?', id, u.id) : null;
   if (act === 'cx') await run(env, 'UPDATE users SET state=NULL WHERE id=?', u.id);
   else if (act === 'new') { const v = await startNew(env, L, u); text = v.text; kb = v.kb; }
+  else if (act === 'kit') { const k = await kitText(env, L, u.id); text = k || tr(L, 'noProx'); kb = k ? kitKb(L) : back(L); }
+  else if (act === 'faq') { text = tr(L, 'faqT'); kb = faqKb(L); }
+  else if (/^fq:\d+$/.test(q.data)) { const f = faqOf(L)[Number(q.data.slice(3))]; text = f ? `<b>${esc(f[0])}</b>\n\n${esc(f[1])}` : tr(L, 'faqT'); kb = back(L, [[{ text: tr(L, 'bFaq'), callback_data: 'faq' }]]); }
+  else if (act === 'tip') { text = tr(L, 'tipText'); kb = back(L); }
   else if (act === 'use') { await run(env, "UPDATE users SET state='alias' WHERE id=?", u.id); text = tr(L, 'useAsk'); kb = cancelKb(L); }
   else if (act === 'profile') { text = tr(L, 'profile', u, (await myProxies(env, u.id)).length); kb = back(L); }
   else if (act === 'help') { text = tr(L, 'help'); kb = back(L); }
@@ -596,7 +628,7 @@ async function onCallback(env, origin, q, u, L) {
   else if (p && act === 'ss') { await run(env, 'UPDATE users SET state=? WHERE id=?', 'shs:' + p.id, u.id); text = tr(L, 'shAsk'); kb = cancelKb(L); }
   else if (p && act === 'sx') { await run(env, 'DELETE FROM shares WHERE pid=?', p.id); toast = tr(L, 'shGone'); text = await shareText(env, L, p); kb = shareKb(L, p, false); }
   else if (p && act === 'dl') { text = tr(L, 'rmAsk', p.name); kb = { inline_keyboard: [[{ text: tr(L, 'bYes'), callback_data: 'dy:' + p.id }, { text: tr(L, 'bNo'), callback_data: 'px:' + p.id }]] }; }
-  else if (p && act === 'dy') { await env.DB.batch([bind(env, 'DELETE FROM proxies WHERE id=?', [p.id]), bind(env, 'DELETE FROM usage WHERE pid=?', [p.id]), bind(env, 'DELETE FROM shares WHERE pid=?', [p.id]), bind(env, 'DELETE FROM meta WHERE k IN (?,?,?)', ['off:' + p.id, 'pl:' + p.id, 'ver:' + p.id])]); const v = await listView(env, L, u); text = tr(L, 'rmDone') + '\n\n' + v.text; kb = v.kb; }
+  else if (p && act === 'dy') { await env.DB.batch([bind(env, 'DELETE FROM proxies WHERE id=?', [p.id]), bind(env, 'DELETE FROM usage WHERE pid=?', [p.id]), bind(env, 'DELETE FROM shares WHERE pid=?', [p.id]), bind(env, 'DELETE FROM meta WHERE k IN (?,?,?,?)', ['off:' + p.id, 'pl:' + p.id, 'ver:' + p.id, 'geo:' + p.id])]); const v = await listView(env, L, u); text = tr(L, 'rmDone') + '\n\n' + v.text; kb = v.kb; }
   await tg(env, 'answerCallbackQuery', { callback_query_id: q.id, text: toast });
   await edit(env, q, text, kb);
 }
@@ -640,6 +672,8 @@ const LOCS = {
   ae: { region: 'aws:me-central-1' }, bh: { region: 'aws:me-south-1' }, in: { region: 'aws:ap-south-1' },
   asia: { region: 'aws:ap-southeast-1' }, jp: { region: 'aws:ap-northeast-1' }, us: { region: 'aws:us-east-1' },
 };
+// Country restriction chosen in the panel (GEO env of the proxy). Only sent when the owner used the toggle, so values set by hand in the Cloudflare dashboard are left alone otherwise.
+const geoVars = async (env, pid) => { const v = await metaGet(env, 'geo:' + pid); return v == null ? {} : { GEO: v }; };
 async function deploy(token, acc, id, vars, o = {}) {
   // keep:true  → settings the owner added in the Cloudflare dashboard (GEO, MAX_LANES, …) survive an update; only our own variables are overwritten
   // loc        → optional fixed region. If Cloudflare refuses an option we retry without it, so a deploy never fails because of a nice-to-have.
@@ -701,9 +735,9 @@ async function api(req, env, route, origin) {
       case 'me': { const miss = await missing(env, u); if (miss.length) await joinPing(env, origin, u, miss); return ok({ user: { id: u.id, name: u.name, joined: u.joined, notify: !!u.notify, lang: LANGS[u.lang] ? u.lang : 'en', role: r }, join: miss.length > 0, broken: miss.some((c) => c.broken) }); }
       case 'chk': { await run(env, 'UPDATE users SET jchk=0 WHERE id=?', u.id); const miss = await missing(env, { ...u, jchk: 0 }); if (miss.length) await joinPing(env, origin, u, miss); return ok({ join: miss.length > 0, broken: miss.some((c) => c.broken), joined: !miss.length && !!miss.verified }); }
       case 'proxies': {
-        const ps = await myProxies(env, u.id), off = await offSet(env), lm = await locMap(env), vm = Object.fromEntries((await all(env, "SELECT k,v FROM meta WHERE k LIKE 'ver:%'")).map((r) => [r.k.slice(4), r.v])), shm = Object.fromEntries((await all(env, 'SELECT pid, alias, hash<>\'\' pw, uses FROM shares WHERE uid=?', u.id)).map((r) => [r.pid, { alias: r.alias, pw: !!r.pw, uses: r.uses }]));
+        const ps = await myProxies(env, u.id), off = await offSet(env), lm = await locMap(env), vm = Object.fromEntries((await all(env, "SELECT k,v FROM meta WHERE k LIKE 'ver:%'")).map((r) => [r.k.slice(4), r.v])), gm = Object.fromEntries((await all(env, "SELECT k,v FROM meta WHERE k LIKE 'geo:%'")).map((r) => [r.k.slice(4), r.v])), shm = Object.fromEntries((await all(env, 'SELECT pid, alias, hash<>\'\' pw, uses FROM shares WHERE uid=?', u.id)).map((r) => [r.pid, { alias: r.alias, pw: !!r.pw, uses: r.uses }]));
         const us = await all(env, 'SELECT pid, day, req, bytes FROM usage WHERE day>=? AND pid IN (SELECT id FROM proxies WHERE uid=?)', ago(6), u.id);
-        return ok({ bundle: BUNDLE, proxies: ps.map((p) => { const x = us.filter((s) => s.pid === p.id); const t = x.find((s) => s.day === day()); return { ...p, off: off.has(p.id), ver: vm[p.id] || 'v4', share: shm[p.id] || null, loc: lm[p.id] || 'auto', today: { req: t?.req || 0, bytes: t?.bytes || 0 }, week: x.reduce((a, s) => a + s.bytes, 0), spark: Array.from({ length: 7 }, (_, i) => x.find((s) => s.day === ago(6 - i))?.bytes || 0) }; }) });
+        return ok({ bundle: BUNDLE, proxies: ps.map((p) => { const x = us.filter((s) => s.pid === p.id); const t = x.find((s) => s.day === day()); return { ...p, off: off.has(p.id), ver: vm[p.id] || 'v4', geo: gm[p.id] ?? null, share: shm[p.id] || null, loc: lm[p.id] || 'auto', today: { req: t?.req || 0, bytes: t?.bytes || 0 }, week: x.reduce((a, s) => a + s.bytes, 0), spark: Array.from({ length: 7 }, (_, i) => x.find((s) => s.day === ago(6 - i))?.bytes || 0) }; }) });
       }
       case 'settings': if (b.notify !== undefined) await run(env, 'UPDATE users SET notify=? WHERE id=?', b.notify ? 1 : 0, u.id); if (LANGS[b.lang]) await run(env, 'UPDATE users SET lang=? WHERE id=?', b.lang, u.id); return ok();
       case 'create': {
@@ -714,13 +748,14 @@ async function api(req, env, route, origin) {
         return ok({ made }); // token goes out of scope here — nothing persisted
       }
       case 'share_set': { const pw = String(b.password || ''), e = await setShare(env, u.id, String(b.id), b.alias, pw); return e ? bad(e) : ok({ alias: String(b.alias).trim().toLowerCase(), pw: !!pw }); }
+      case 'kit': { const k = await kitText(env, LANGS[u.lang] ? u.lang : 'en', u.id); if (!k) return bad('notfound'); await say(env, u.id, k, kitKb(LANGS[u.lang] ? u.lang : 'en')); return ok(); }
       case 'share_del': await run(env, 'DELETE FROM shares WHERE pid=? AND uid=?', String(b.id), u.id); return ok();
       case 'rename': { const nm = cleanNames([b.name])[0]; if (!nm) return bad('names'); await run(env, 'UPDATE proxies SET name=? WHERE id=? AND uid=?', nm, b.id, u.id); return ok(); }
       case 'delete': {
         const p = await one(env, 'SELECT * FROM proxies WHERE id=? AND uid=?', b.id, u.id);
         if (!p) return bad('notfound', 404);
         if (b.token) { const token = fixTok(b.token); if (token.length < 20) return bad('creds'); const acc = await resolveAccount(token, String(b.account || '').trim()); await cf(token, 'DELETE', `/accounts/${acc}/workers/scripts/${p.id}?force=true`).catch((e) => { if (e.code !== 10007) throw e; }); } // 10007 = already gone
-        await env.DB.batch([bind(env, 'DELETE FROM proxies WHERE id=?', [p.id]), bind(env, 'DELETE FROM usage WHERE pid=?', [p.id]), bind(env, 'DELETE FROM shares WHERE pid=?', [p.id]), bind(env, 'DELETE FROM meta WHERE k IN (?,?,?)', ['off:' + p.id, 'pl:' + p.id, 'ver:' + p.id])]);
+        await env.DB.batch([bind(env, 'DELETE FROM proxies WHERE id=?', [p.id]), bind(env, 'DELETE FROM usage WHERE pid=?', [p.id]), bind(env, 'DELETE FROM shares WHERE pid=?', [p.id]), bind(env, 'DELETE FROM meta WHERE k IN (?,?,?,?)', ['off:' + p.id, 'pl:' + p.id, 'ver:' + p.id, 'geo:' + p.id])]);
         return ok();
       }
       case 'update': { // redeploy newest core; needs a one-time token
@@ -731,7 +766,8 @@ async function api(req, env, route, origin) {
         let link = p.enter;
         if (!/^[0-9a-f]{32}$/.test(psec || '')) { psec = hx(16); link = `https://t.me/webproxy?server=${new URL(p.url).host}&secret=${psec}`; await run(env, 'UPDATE proxies SET enter=? WHERE id=?', link, p.id); }
         const loc = b.loc === undefined ? (await metaGet(env, 'pl:' + p.id)) || 'auto' : String(b.loc);
-        const d = await deploy(token, acc, p.id, { MTSECRET: psec, PID: p.id, SECRET: p.secret, REPORT: origin + '/r' }, { keep: true, loc });
+        if (b.geo === 'IR' || b.geo === '') await metaSet(env, 'geo:' + p.id, b.geo);
+        const d = await deploy(token, acc, p.id, { MTSECRET: psec, PID: p.id, SECRET: p.secret, REPORT: origin + '/r', ...(await geoVars(env, p.id)) }, { keep: true, loc });
         await afterDeploy(env, token, acc, p, loc, d.placed); // same link, same custom settings, still paused if it was paused
         return ok({ enter: link, placed: d.placed });
       }
@@ -741,7 +777,7 @@ async function api(req, env, route, origin) {
         const token = fixTok(b.token); if (token.length < 20) return bad('creds'); const acc = await resolveAccount(token, String(b.account || '').trim());
         const psec = hx(16), link = `https://t.me/webproxy?server=${new URL(p.url).host}&secret=${psec}`;
         const loc = (await metaGet(env, 'pl:' + p.id)) || 'auto';
-        const d = await deploy(token, acc, p.id, { MTSECRET: psec, PID: p.id, SECRET: p.secret, REPORT: origin + '/r' }, { keep: true, loc });
+        const d = await deploy(token, acc, p.id, { MTSECRET: psec, PID: p.id, SECRET: p.secret, REPORT: origin + '/r', ...(await geoVars(env, p.id)) }, { keep: true, loc });
         await run(env, 'UPDATE proxies SET enter=?, fail=0 WHERE id=?', link, p.id);
         await afterDeploy(env, token, acc, p, loc, d.placed);
         return ok({ enter: link });
