@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.3 (core v6, bundle v9)
+
+- **Lower connect latency:** the core now dials the most likely Telegram data centre the moment a lane opens and reuses that socket when the client's handshake agrees (saves about one client round trip per connection; a wrong guess is closed). Disable with the `FASTDIAL=0` variable.
+- **Ping Doctor** in the panel's ping test: when the measured delay is high it lists ordered options (fresh route, Wi-Fi/mobile, location change, proxy clean-up) with honest wording — most delay is the ISP's route to Cloudflare.
+
 ## 7.2
 
 - **Step-by-step deploy screen** (token check → account → upload → enable → verify) with live progress and a clear error, for create, update and new-link.

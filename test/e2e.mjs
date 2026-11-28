@@ -89,7 +89,7 @@ class App {
 const u32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b; };
 
 async function boot(secretHex, extraEnv = {}, ip = '1.1.1.1') {
-  const env = { MTSECRET: secretHex, ...extraEnv };
+  const env = { MTSECRET: secretHex, FASTDIAL: '0', ...extraEnv };
   const S = Buffer.from(secretHex, 'hex');
   const cap = crypto.createHmac('sha256', S).update('tdesktop-web-proxy-bridge-v1\nworker.test').digest('base64url');
   const r = await worker.fetch(new Request(`${BASE}/?bridge=${cap}`), env, ctx);
@@ -207,6 +207,27 @@ test('two concurrent lanes do not mix', async () => {
   await waitFor(() => app.data(1).length >= 64 && app.data(2).length >= 64);
   eq(A.dec.update(app.data(1)), ra); eq(B.dec.update(app.data(2)), rb);
   c.stop();
+});
+test('speculative connect: hit reuses the pre-dialed socket, miss closes it', async () => {
+  for (let i = 0; i < 4; i++) { const r = await session1({ tag: 'efefefef', dc: 2 }); r.c.stop(); }   // make dc2 the hottest key
+  const sec = HEX();
+  let c = await boot(sec, { FASTDIAL: '1' }), before = ups.length;
+  let ci = clientInit(c.S16, 'efefefef', 2), pk = packet('efefefef', crypto.randomBytes(48));
+  c.app.send(1, 1);
+  await waitFor(() => ups.length === before + 1).catch((e) => { throw new Error('S1 ' + ups.length + ' ' + before).catch(() => { throw new Error('step1'); }); });  // dialed before any data arrived
+  ok(ups[before].dc === 2 && !ups[before].media, 'pre-dial should target dc2');
+  c.app.send(2, 1, Buffer.concat([ci.wire, ci.enc.update(pk)]));
+  await waitFor(() => ups[before].got.length >= pk.length).catch(() => { throw new Error('step2'); });
+  ok(ups.length === before + 1, 'hit must not dial again'); eq(ups[before].got, pk); c.c = c; c.stop();
+  c = await boot(HEX(), { FASTDIAL: '1' }); before = ups.length;
+  ci = clientInit(c.S16, 'eeeeeeee', -4); pk = packet('eeeeeeee', crypto.randomBytes(48));
+  c.app.send(1, 1); await waitFor(() => ups.length === before + 1).catch(() => { throw new Error('step3'); });
+  c.app.send(2, 1, Buffer.concat([ci.wire, ci.enc.update(pk)]));
+  await waitFor(() => ups.length === before + 2 && ups[before + 1].got.length >= pk.length).catch(() => { throw new Error('step4'); });
+  ok(ups[before + 1].dc === 4 && ups[before + 1].media, 'real upstream'); await waitFor(() => ups[before].closed).catch(() => { throw new Error('step5'); }); c.stop();
+  c = await boot(HEX(), { FASTDIAL: '1' }); before = ups.length;
+  c.app.send(1, 1); await waitFor(() => ups.length === before + 1).catch(() => { throw new Error('step6'); }); c.app.send(2, 1, crypto.randomBytes(64));
+  await waitFor(() => c.app.closed(1)).catch(() => { throw new Error('step7'); }); await waitFor(() => ups[before].closed).catch(() => { throw new Error('step8'); }); c.stop();
 });
 test('wrong tag in init -> lane closed, no upstream', async () => {
   const c = await boot(HEX()), { app } = c, before = ups.length;

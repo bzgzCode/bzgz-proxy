@@ -1,4 +1,4 @@
-// Bzgz WEB Proxy core v5 — Telegram "WEB proxy" (protocol v1, websocket-lanes carrier) on Cloudflare Workers.
+// Bzgz WEB Proxy core v6 — Telegram "WEB proxy" (protocol v1, websocket-lanes carrier) on Cloudflare Workers.
 // Env: MTSECRET (32 hex, optional "dd" prefix) | PID, SECRET, REPORT (usage self-report + keyed health check)
 // Optional env: GEO ("IR,DE" = allowed countries) | LANES_PER_IP (default 1024) | MAX_LANES (default 2000)
 //
@@ -14,7 +14,7 @@
 //  - dial to Telegram retries; lane back-pressure cap; per-IP and global lane caps; optional GEO allow-list
 //  - AES-CTR counter maths without BigInt; stream position is advanced synchronously (no ordering races)
 //  - frame reader tolerates frames split across WebSocket messages
-const VERSION = '5.0';
+const VERSION = '6.0';
 const enc = new TextEncoder();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -139,6 +139,13 @@ function dial(dc, media) {
     timers.push(setTimeout(launch, 1200), setTimeout(launch, 2800), setTimeout(() => { if (!done) { end(); reject(new Error('timeout')); } }, 9000));
   });
 }
+
+// Speculative connect: Telegram's DC for a lane is only known after the client's first 64 bytes arrive, which costs a client round trip.
+// We start dialing the most likely DC the moment the lane opens and reuse that socket when the real handshake agrees (otherwise it is closed).
+const HOT = new Map();
+function hotKey() { let best = '2|0', n = -1; for (const [k, v] of HOT) if (v > n) { best = k; n = v; } return best; }
+function hotSeen(k) { HOT.set(k, (HOT.get(k) || 0) + 1); if (HOT.size > 12 || (HOT.get(k) || 0) > 1e6) for (const [x, v] of HOT) HOT.set(x, v >> 1); }
+function specDial(key) { const [dc, m] = key.split('|'); const p = dial(Number(dc), m === '1'); p.catch(() => {}); return { key, p }; }
 
 /* ---------------- usage self-report ---------------- */
 const M = { r: 0, b: 0, t: 0 };
@@ -277,6 +284,7 @@ class Lane {
     this.inb = new Uint8Array(0); this.opened = false; this.dead = false; this.started = false; this.firstOut = true;
     this.hold = new Uint8Array(0); this.clear = new Uint8Array(0); this.credit = 4194304; this.dq = []; this.dqBytes = 0;
     this.jobs = Promise.resolve(); this.downJobs = Promise.resolve();
+    this.spec = String(env.FASTDIAL) === '0' ? null : specDial(hotKey());
     sock.addEventListener('message', (e) => this.onMessage(e));
     sock.addEventListener('close', () => this.stop(false));
     sock.addEventListener('error', () => this.stop(false));
@@ -288,8 +296,10 @@ class Lane {
     if (notify) this.put(this.frame(3));
     try { this.sock.close(1000); } catch {}
     try { this.up && this.up.close(1000); } catch {}
+    this.dropSpec();
     this.dq = []; this.release(); tick(this.env, this.ctx);
   }
+  dropSpec() { const s = this.spec; this.spec = null; if (s) s.p.then((w) => { try { w.close(1000); } catch {} }, () => {}); }
   pump() {
     while (this.dq.length && this.credit > 0) {
       const c = this.dq[0], n = Math.min(c.length, this.credit, 65536);
@@ -335,7 +345,10 @@ class Lane {
     this.wire = i2.slice(); this.wire.set(e.subarray(56, 64), 56);
     const r2 = i2.slice(8, 56).reverse();
     this.upRx = new Stream(r2.slice(0, 32), r2.slice(32, 48));
-    const up = await dial(dc, raw < 0);
+    const key = dc + '|' + (raw < 0 ? 1 : 0); hotSeen(key);
+    let up;
+    if (this.spec && this.spec.key === key) { const s = this.spec; this.spec = null; try { up = await s.p; } catch { up = await dial(dc, raw < 0); } }
+    else { this.dropSpec(); up = await dial(dc, raw < 0); }
     if (this.dead) { try { up.close(1000); } catch {} throw new Error('gone'); }
     this.up = up;
     up.addEventListener('message', (ev) => this.onUp(ev));

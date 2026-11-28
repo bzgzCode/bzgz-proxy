@@ -4,7 +4,7 @@
 import PROXY_CODE from './core.html';
 import APP_HTML from './app.html';
 
-const BUNDLE = 'v8'; // bumped whenever the proxy code changes; users update their proxies themselves, nothing is ever pushed automatically
+const BUNDLE = 'v9'; // bumped whenever the proxy code changes; users update their proxies themselves, nothing is ever pushed automatically
 // Wrapper placed in front of the unmodified proxy core: serves the private usage page at /_u/<secret>, everything else goes to the core.
 const WRAP = `import core from './core.js';
 const E = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
